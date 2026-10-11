@@ -816,8 +816,18 @@ eq(
 );
 eq(
   translateError(mockT, { code: "error.unknown", error: "原文错误" }),
-  "error.unknown",
-  "translateError keeps an unknown code instead of the server sentence",
+  "原文错误",
+  "unknown code keeps the server sentence when one is present",
+);
+eq(
+  translateError(mockT, { code: "ENOENT", error: "ENOENT: no such file or directory, open C:/tmp" }),
+  "ENOENT: no such file or directory, open C:/tmp",
+  "node errno keeps the full message instead of the bare code",
+);
+eq(
+  translateError(mockT, { code: "ENOENT" }),
+  "ENOENT",
+  "bare code is kept only when there is no sentence",
 );
 eq(
   translateError(mockT, {

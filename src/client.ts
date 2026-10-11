@@ -121,7 +121,7 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
       if (payload instanceof Error && !(payload as CodedError).code) return payload.message;
       if (payload && typeof payload === "object") {
         const item = payload as Diagnostic & {message?: unknown};
-        if (item.code) { var params = Object.assign({}, item.params || {}); if (params.action) params.action = translateOrFallback(t, "action." + params.action, String(params.action)); var translated = t(item.code, params); if (typeof translated === "string" && translated !== item.code) return translated; if (translated === item.code) return item.code; }
+        if (item.code) { var params = Object.assign({}, item.params || {}); if (params.action) params.action = translateOrFallback(t, "action." + params.action, String(params.action)); var translated = t(item.code, params); if (typeof translated === "string" && translated !== item.code) return translated; if (translated === item.code) return item.error !== undefined ? translateError(t, item.error) : item.code; }
         if (item.error !== undefined) return translateError(t, item.error); if (item.message !== undefined) return String(item.message);
       }
       return String(payload == null ? "" : payload);

@@ -132,6 +132,13 @@ try {
     }
   }
 
+  const { createRepositoryManager } = await import("../lib/repositories.js");
+  const idle = createRepositoryManager({ registeredWorkspaces: () => [gitProject, plainProject] });
+  core.takeWorkspaceIndexBuilds();
+  await idle.list();
+  await idle.sources();
+  assert.equal(core.takeWorkspaceIndexBuilds(), 0, "没有工作区安装记录时不扫描登记工作区");
+
   console.log("工作区目标：登记校验、项目根解析、链接与重叠防护、同名只比较所选目录均通过");
 } finally {
   await rm(temp, { recursive: true, force: true });

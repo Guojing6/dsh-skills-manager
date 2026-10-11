@@ -12,6 +12,7 @@
 - Creating or importing a skill is disabled when the selected user location is unavailable, same as repository install.
 - Restoring a project skill from Trash reports that the workspace is no longer registered, instead of saying it is not the active session.
 - Installing a repository skill refreshes project workspaces you already expanded.
+- Disk errors keep the full message. An unknown code is shown by itself only when the server did not include a sentence.
 
 - Trash entries now use lightly bordered cards with separate deletion time and source metadata. Actions wrap on narrow panels and follow the host theme; restore and permanent deletion behavior is unchanged.
 

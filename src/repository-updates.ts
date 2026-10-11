@@ -4,7 +4,7 @@ import type { Archive, FileDigest, RepositoryDependencies, SkillRequest, Install
 import { promises as fs } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { managerHomePath, userRoots, projectRootForRecord, resolveWorkspaceTarget, indexRegisteredWorkspaces } from "./core.js";
+import { managerHomePath, userRoots, projectRootForRecord, resolveWorkspaceTarget, createWorkspaceIndex, type indexRegisteredWorkspaces } from "./core.js";
 
 const hash = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const repositoryInstallKeys = new Set(["dsh", "agents"]);
@@ -145,14 +145,13 @@ export function createRepositoryUpdater({ read, write, repository, download, ser
   }
   async function sources() {
     const data = await read(), result: Record<string, InstallSource> = Object.create(null);
-    const registered = registeredWorkspaces?.();
-    const indexed = await indexRegisteredWorkspaces(registered);
+    const index = createWorkspaceIndex(registeredWorkspaces?.());
     for (const record of data.installs.filter(i => i.complete && !i.trashId)) {
       const source = record.source || data.repositories.find(r => r.id === record.id);
       if (!source) continue;
       const parsed = parseRepositoryInput({ url: `${source.owner}/${source.name}`, ref: source.ref, subdirectory: source.subdirectory });
       try {
-        const root = await recordInstallRoot(record, registered, indexed);
+        const root = await recordInstallRoot(record, index.registered, record.workspace === undefined ? undefined : await index.load());
         const realRoot = await fs.realpath(root.path);
         result[installationSourceKey(realRoot, record.name)] = { ...parsed, id: record.id, path: record.path, commit: record.commit, root: record.root || "dsh", ...(record.workspace ? { workspace: record.workspace } : {}) };
       } catch { /* 失效或未登记项目的记录不能挂到任何同名技能上。 */ }

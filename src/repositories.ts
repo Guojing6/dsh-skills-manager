@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { unzipSync } from "fflate";
-import { managerHomePath, resolveWorkspaceTarget, repositoryDestinations, trashRootPath, listTrash, restoreTrash as restoreSkillTrash, parseSkillDoc, importUploadedSkill, deleteSkill, setSkillEnabled, state, indexRegisteredWorkspaces } from "./core.js";
+import { managerHomePath, resolveWorkspaceTarget, repositoryDestinations, trashRootPath, listTrash, restoreTrash as restoreSkillTrash, parseSkillDoc, importUploadedSkill, deleteSkill, setSkillEnabled, state, createWorkspaceIndex, type indexRegisteredWorkspaces } from "./core.js";
 import { createRepositoryUpdater, fileIndex, signature, readSkillTree, repositoryInstallRoot, recordInstallRoot, selectInstallRecord } from "./repository-updates.js";
 
 const LIMIT = 32 << 20;
@@ -116,7 +116,10 @@ async function readResponse(response: Response, limit: number) {
 export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, registeredWorkspaces }: {fetchImpl?: typeof fetch; log?: Log; registeredWorkspaces?: () => string[] | undefined} = {}) {
   const file = join(managerHomePath(), "repositories.json");
   let queue: Promise<unknown> = Promise.resolve();
-  const serialize: Serialize = (task, recover = true) => { const run = async () => { if (recover) await recoverPending(); return task(); }; const next = queue.then(run, run); queue = next.catch(() => {}); return next; };
+  let activeIndex: ReturnType<typeof createWorkspaceIndex> | undefined;
+  const serialize: Serialize = (task, recover = true) => { const run = async () => { const index = createWorkspaceIndex(registeredWorkspaces?.()); const previous = activeIndex; activeIndex = index; try { if (recover) await recoverPending(); return task(); } finally { activeIndex = previous; } }; const next = queue.then(run, run); queue = next.catch(() => {}); return next; };
+  function requestIndex() { return activeIndex ?? createWorkspaceIndex(registeredWorkspaces?.()); }
+  async function indexedFor(record: { workspace?: string }) { return record.workspace === undefined ? undefined : requestIndex().load(); }
   async function read(): Promise<RepositoryState> {
     try {
       const homeInfo = await fs.lstat(managerHomePath());
@@ -220,15 +223,14 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
   async function recoverPending() {
     const data = await read(); let recovered = false;
     const restoredIds: string[] = [];
-    const registered = registeredWorkspaces?.();
-    const indexed = await indexRegisteredWorkspaces(registered);
+    const registered = requestIndex().registered;
     for (const record of data.installs.filter(record => !record.complete && !record.trashId)) {
-      if (await matches(record, signature(record.files), registered, indexed)) { record.complete = true; recovered = true; }
+      if (await matches(record, signature(record.files), registered, await indexedFor(record))) { record.complete = true; recovered = true; }
     }
     for (const record of data.installs.filter(record => record.trashId && record.restoreFingerprint)) {
       // Intent or Trash absence alone cannot authorize a same-name replacement.
       // Require the atomic successful-restore receipt and exact restored files.
-      if (await hasRestoreReceipt(record) && await matches(record, record.restoreFingerprint, registered, indexed)) {
+      if (await hasRestoreReceipt(record) && await matches(record, record.restoreFingerprint, registered, await indexedFor(record))) {
         restoredIds.push(record.trashId!);
         delete record.trashId; delete record.restoreFingerprint; recovered = true;
       }
@@ -247,11 +249,10 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
     // 每次只读取一个目录，避免多个大技能并行读取使内存随安装数量增长。
     const matched = new Map<InstallRecord, boolean>();
     const present = new Set<InstallRecord>();
-    const registered = registeredWorkspaces?.();
-    const indexed = await indexRegisteredWorkspaces(registered);
+    const registered = requestIndex().registered;
     for (const record of data.installs.filter(record => record.complete && !record.trashId)) {
       try {
-        const files = fileIndex(await readSkillTree(join((await recordInstallRoot(record, registered, indexed)).path, record.name)));
+        const files = fileIndex(await readSkillTree(join((await recordInstallRoot(record, registered, await indexedFor(record))).path, record.name)));
         present.add(record);
         matched.set(record, signature(files) === signature(record.files));
       } catch { /* Missing or unsafe installed copies must not be deleted. */ }
@@ -354,9 +355,9 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
     uninstall: (input: SkillRequest) => serialize(async () => {
       const { id, path } = input;
       const data = await read();
-      const registered = registeredWorkspaces?.();
-      const record = await selectInstallRecord(data.installs, input, registered, "没有可追溯的安装记录，不能卸载");
-      const root = await recordInstallRoot(record, registered);
+      const index = requestIndex();
+      const record = await selectInstallRecord(data.installs, input, index.registered, "没有可追溯的安装记录，不能卸载");
+      const root = await recordInstallRoot(record, index.registered, await indexedFor(record));
       const fingerprint = signature(fileIndex(await readSkillTree(join(root.path, record.name))));
       const trashId = `${Date.now()}-${randomUUID()}`;
       // Retire write authorization before moving the copy. History belongs to
