@@ -2,7 +2,7 @@
 
 [简体中文](CHANGELOG.zh-CN.md)
 
-## 1.1.14 - 2026-10-11
+## 1.1.15 - 2026-10-11
 
 - Managing, restoring, or removing a project skill now stops if that workspace is no longer registered, or if the project root has changed. It does not write to another project.
 - The same repository skill can be installed in more than one place. Update, roll back, and uninstall apply only to the copy you select.
