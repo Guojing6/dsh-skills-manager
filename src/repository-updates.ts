@@ -80,7 +80,7 @@ function changesBetween(before: FileDigest[], after: FileDigest[]) {
 }
 
 /** 注入现有仓库存储与串行队列，避免更新和安装互相覆盖状态。 */
-export function createRepositoryUpdater({ read, write, repository, download, serialize, parseRepositoryInput, registeredWorkspaces }: RepositoryDependencies) {
+export function createRepositoryUpdater({ read, write, repository, download, serialize, parseRepositoryInput, registeredWorkspaces, onWorkspaceIndexBuild }: RepositoryDependencies) {
   async function prepare(input: SkillRequest, includeArchive = false) {
     const { id, path } = input, data = await read();
     const registered = registeredWorkspaces?.();
@@ -145,7 +145,7 @@ export function createRepositoryUpdater({ read, write, repository, download, ser
   }
   async function sources() {
     const data = await read(), result: Record<string, InstallSource> = Object.create(null);
-    const index = createWorkspaceIndex(registeredWorkspaces?.());
+    const index = createWorkspaceIndex(registeredWorkspaces?.(), { onBuild: onWorkspaceIndexBuild });
     for (const record of data.installs.filter(i => i.complete && !i.trashId)) {
       const source = record.source || data.repositories.find(r => r.id === record.id);
       if (!source) continue;

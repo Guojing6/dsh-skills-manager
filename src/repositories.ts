@@ -113,12 +113,12 @@ async function readResponse(response: Response, limit: number) {
   return Buffer.concat(chunks, length);
 }
 
-export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, registeredWorkspaces }: {fetchImpl?: typeof fetch; log?: Log; registeredWorkspaces?: () => string[] | undefined} = {}) {
+export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, registeredWorkspaces, onWorkspaceIndexBuild }: {fetchImpl?: typeof fetch; log?: Log; registeredWorkspaces?: () => string[] | undefined; onWorkspaceIndexBuild?: () => void} = {}) {
   const file = join(managerHomePath(), "repositories.json");
   let queue: Promise<unknown> = Promise.resolve();
   let activeIndex: ReturnType<typeof createWorkspaceIndex> | undefined;
-  const serialize: Serialize = (task, recover = true) => { const run = async () => { const index = createWorkspaceIndex(registeredWorkspaces?.()); const previous = activeIndex; activeIndex = index; try { if (recover) await recoverPending(); return task(); } finally { activeIndex = previous; } }; const next = queue.then(run, run); queue = next.catch(() => {}); return next; };
-  function requestIndex() { return activeIndex ?? createWorkspaceIndex(registeredWorkspaces?.()); }
+  const serialize: Serialize = (task, recover = true) => { const run = async () => { const index = createWorkspaceIndex(registeredWorkspaces?.(), { onBuild: onWorkspaceIndexBuild }); const previous = activeIndex; activeIndex = index; try { if (recover) await recoverPending(); return task(); } finally { activeIndex = previous; } }; const next = queue.then(run, run); queue = next.catch(() => {}); return next; };
+  function requestIndex() { return activeIndex ?? createWorkspaceIndex(registeredWorkspaces?.(), { onBuild: onWorkspaceIndexBuild }); }
   async function indexedFor(record: { workspace?: string }) { return record.workspace === undefined ? undefined : requestIndex().load(); }
   async function read(): Promise<RepositoryState> {
     try {
@@ -277,7 +277,7 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
   }
   return {
     list: () => serialize(list),
-    ...createRepositoryUpdater({ read, write, repository, download, serialize, parseRepositoryInput, registeredWorkspaces }),
+    ...createRepositoryUpdater({ read, write, repository, download, serialize, parseRepositoryInput, registeredWorkspaces, onWorkspaceIndexBuild }),
     add: (input: RepositoryInput) => serialize(async () => {
       const source = parseRepositoryInput(input), data = await read();
       const id = createHash("sha256").update(JSON.stringify(source)).digest("hex").slice(0, 24);

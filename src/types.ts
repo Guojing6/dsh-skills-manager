@@ -212,6 +212,8 @@ export interface SkillRequest {
 export type Serialize = <T>(task: () => T | Promise<T>, recover?: boolean) => Promise<T>;
 export interface RepositoryDependencies {
     registeredWorkspaces?: () => string[] | undefined;
+    /** 测试用来观察是否真的扫描了登记工作区；生产调用不传。 */
+    onWorkspaceIndexBuild?: () => void;
     read: () => Promise<RepositoryState>;
     write: (state: RepositoryState) => Promise<void>;
     repository: (state: RepositoryState, id: string) => Repository;

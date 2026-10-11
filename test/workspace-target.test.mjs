@@ -132,12 +132,20 @@ try {
     }
   }
 
+  let directBuilds = 0;
+  const watched = core.createWorkspaceIndex([gitProject, plainProject], { onBuild: () => { directBuilds += 1; } });
+  assert.equal(directBuilds, 0, "创建索引对象本身不扫描");
+  await watched.load();
+  await watched.load();
+  assert.equal(directBuilds, 1, "同一次索引只在第一次读取时通知一次");
+  assert.equal(core.takeWorkspaceIndexBuilds, undefined, "测试计数器不能导出到插件");
+
   const { createRepositoryManager } = await import("../lib/repositories.js");
-  const idle = createRepositoryManager({ registeredWorkspaces: () => [gitProject, plainProject] });
-  core.takeWorkspaceIndexBuilds();
+  let builds = 0;
+  const idle = createRepositoryManager({ registeredWorkspaces: () => [gitProject, plainProject], onWorkspaceIndexBuild: () => { builds += 1; } });
   await idle.list();
   await idle.sources();
-  assert.equal(core.takeWorkspaceIndexBuilds(), 0, "没有工作区安装记录时不扫描登记工作区");
+  assert.equal(builds, 0, "没有工作区安装记录时不扫描登记工作区");
 
   console.log("工作区目标：登记校验、项目根解析、链接与重叠防护、同名只比较所选目录均通过");
 } finally {

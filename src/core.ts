@@ -466,26 +466,21 @@ function sameWorkspace(a: string, b: string) {
   return pathIdentity(a) === pathIdentity(b);
 }
 
-let workspaceIndexBuilds = 0;
-export function takeWorkspaceIndexBuilds() {
-  const count = workspaceIndexBuilds;
-  workspaceIndexBuilds = 0;
-  return count;
-}
-
-export function createWorkspaceIndex(registered?: string[]) {
+export function createWorkspaceIndex(registered?: string[], hooks?: { onBuild?: () => void }) {
   let pending: Promise<Array<{ root: SkillRoot } | OperationError>> | undefined;
   return {
     registered,
     load() {
-      if (!pending) pending = indexRegisteredWorkspaces(registered);
+      if (!pending) {
+        hooks?.onBuild?.();
+        pending = indexRegisteredWorkspaces(registered);
+      }
       return pending;
     },
   };
 }
 
 export async function indexRegisteredWorkspaces(registered?: string[]): Promise<Array<{ root: SkillRoot } | OperationError>> {
-  workspaceIndexBuilds += 1;
   const list = Array.isArray(registered) ? registered.filter((item): item is string => typeof item === "string") : [];
   const indexed: Array<{ root: SkillRoot } | OperationError> = [];
   for (const workspace of list) indexed.push(await resolveWorkspaceTarget(workspace, list));
