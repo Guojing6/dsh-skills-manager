@@ -19,7 +19,7 @@
 
 > DSH Skills Manager 是社区维护的 DeepSeek Harness（DSH）插件，并非 DeepSeek AI 官方产品。
 
-本文描述当前源码。已发布变更见[更新日志](CHANGELOG.zh-CN.md)；尚未发布的改动也列在那里，直到下一个版本。
+本文描述 **1.1.14**。已发布变更见[更新日志](CHANGELOG.zh-CN.md)。
 
 ## 功能概览
 
