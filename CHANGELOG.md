@@ -7,6 +7,8 @@
 - Managing, restoring, or removing a project skill now stops if that workspace is no longer registered, or if the project root has changed. It does not write to another project.
 - The same repository skill can be installed in more than one place. Update, roll back, and uninstall apply only to the copy you select.
 - Unavailable destinations, repository errors, and dates follow the language and region selected in DSH. The chat card for a failed skill creation no longer appends the Chinese error text.
+- The project tab no longer shows the global skill totals or source filter. Those numbers only cover the current session, so they were always zero there. Search on that tab says it only covers workspaces you have expanded.
+- A repository skill that only conflicts with a local copy shows Name conflict and cannot be installed over it.
 
 - Trash entries now use lightly bordered cards with separate deletion time and source metadata. Actions wrap on narrow panels and follow the host theme; restore and permanent deletion behavior is unchanged.
 

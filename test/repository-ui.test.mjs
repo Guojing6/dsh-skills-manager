@@ -117,6 +117,15 @@ find(n => n.props["aria-expanded"] === false).props.onClick(); render();
 assert.equal(all().filter(n => n.props.className === "dssm-repo-row").length, 2);
 assert.ok(rowAction("repo.conflict").props.disabled, "未跟踪的同名冲突不能卸载");
 assert.equal(rowAction("repo.uninstall"), undefined);
+// 服务端对每个技能都会返回 installations 数组；本地有同名技能但没有安装记录时是空数组，
+// 界面仍要显示「同名冲突」并禁用安装，不能把空数组当成可安装。
+repos[0].skills[1].installations = [];
+render();
+const conflictRow = all().filter(n => n.props.className === "dssm-repo-row").find(n => nodes(n).some(c => c.props.className === "dssm-name" && c.children.includes("docx")));
+assert.ok(nodes(conflictRow).some(n => isAction(n, "repo.conflict") && n.props.disabled), "空 installations 的同名冲突仍显示同名冲突并禁用");
+assert.equal(nodes(conflictRow).find(n => isAction(n, "repo.install")), undefined, "同名冲突行不显示可点的「安装」");
+delete repos[0].skills[1].installations;
+render();
 find(n => n.props["aria-label"] === "repo.search").props.onChange({ target: { value: "PDF" } }); render();
 assert.equal(all().filter(n => n.props.className === "dssm-repo-row").length, 1);
 const listCalls = countCalls("/repositories");

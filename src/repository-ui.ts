@@ -240,8 +240,8 @@ export function createRepositoryUI({ react, Modal, Input, Button, SourceSelect, 
             installation?.id === repo.id && installation.path === skill.path ? h("div", { className: "dssm-note" + (installation.error ? " dssm-error" : ""), role: installation.error ? "alert" : "status", "aria-live": "polite" }, feedbackText(installation)) : null,
             h('div', { className: 'dssm-repo-copies' }, copiesOf(skill).map(copy => renderCopy(repo, skill, copy)))),
           button("repo.detail", () => openDetail(repo, skill)),
-          button(installation?.id === repo.id && installation.path === skill.path && installation.pending && installation.action === 'install' ? 'repo.installing' : copiesOf(skill).length ? 'repo.installElsewhere' : skill.status === 'available' || (skill as RepoSkill).installations && skill.status !== 'invalid' ? 'repo.install' : 'repo.' + skill.status,
-            () => openInstallation('install', repo, skill), copiesOf(skill).length > 0 || skill.status !== 'available', !copiesOf(skill).length && skill.status !== 'available' && (!(skill as RepoSkill).installations || skill.status === 'invalid')))) : h("div", { className: "dssm-empty" }, t("repo.noSkills")) : null));
+          button(installation?.id === repo.id && installation.path === skill.path && installation.pending && installation.action === 'install' ? 'repo.installing' : copiesOf(skill).length ? 'repo.installElsewhere' : 'repo.' + (skill.status === 'available' ? 'install' : skill.status),
+            () => openInstallation('install', repo, skill), copiesOf(skill).length > 0 || skill.status !== 'available', !copiesOf(skill).length && skill.status !== 'available'))) : h("div", { className: "dssm-empty" }, t("repo.noSkills")) : null));
     });
     function select(label: string, value: string, change: (value: string) => void, options: string[][]) {
       return h(SourceSelect, { label: t(label), value, onChange: change, options: [{ value: "", label: t(label) }, ...options.map(([id, text]) => ({ value: id, label: text }))] });

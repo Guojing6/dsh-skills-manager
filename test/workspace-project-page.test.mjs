@@ -116,6 +116,11 @@ try {
   assert.ok(textOf(groups[0]).includes("2 个技能"), "折叠行显示数量");
   assert.equal(calls.some((c) => c.url.endsWith("/workspace-skills")), false, "折叠时不扫描项目");
   assert.equal(find((node) => node.children.includes(t("project.empty"))), undefined, "不再有「当前会话没有工作区」空状态");
+  // 项目页的汇总靠扫描全部工作区才能得出，折叠时没有数据；不能显示恒为 0 的全局统计与来源筛选。
+  assert.equal(find((node) => node.props.className === "dssm-summary"), undefined, "项目页不显示全局统计卡");
+  assert.equal(find((node) => node.props.className === "dssm-source-filter"), undefined, "项目页不显示全局来源筛选");
+  assert.ok(find((node) => node.props.className === "dssm-status-filter") && find((node) => node.props.className === "dssm-search"), "项目页保留状态筛选与搜索框");
+  assert.ok(find((node) => node.props.className === "dssm-note" && node.children.includes(t("project.searchHint"))), "搜索框旁说明：只搜已展开的工作区");
 
   // 2. 失效路径标出来，且不可展开取数。
   assert.ok(textOf(groups[2]).includes(t("workspace.unavailable")), "不可用路径带标记");
