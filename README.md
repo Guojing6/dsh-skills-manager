@@ -19,7 +19,7 @@
 
 > DSH Skills Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
 
-This README describes **1.1.13**. See the [changelog](CHANGELOG.md) and [release notes](https://github.com/MichengAI/dsh-skills-manager/releases/latest).
+This README describes the current source. Released changes are in the [changelog](CHANGELOG.md); unreleased work is listed there until the next version.
 
 ## Features
 
@@ -82,14 +82,14 @@ Restart DSH, refresh the page, and open **Settings → Skills**. To update, sele
 | Enable or disable | Toggle the skill switch. This affects DSH without editing source files. |
 | Add a skill | Select **Create skill** or **Import skill**, then use the side-by-side dropdowns: choose **User directory** (default) or **Specific workspace** on the left, and a location or registered workspace on the right. Check the destination path below. A workspace copy is written to that project's `.dsh/skills` and may be committed to its repository. |
 | Install from a repository | Open **Repositories → Add repository**, enter a public GitHub URL, scan, click **Install**, use the same side-by-side dropdowns to choose the scope and location or workspace, check the destination path below, and confirm. |
-| Uninstall a repository skill | Click the red **Uninstall** button and confirm. The installed folder and local edits move to **Trash**, and **Install** becomes available again. |
+| Uninstall a repository skill | Click the red **Uninstall** button and confirm. This includes copies in a registered workspace. The installed folder and local edits move to **Trash**, and **Install** becomes available again. |
 | Update repository skills | Select **Refresh & check updates**, then **Review update** to inspect changes and confirm backup and update. |
 | Roll back an update | Select **Restore previous version** for a skill with a backup, preview and confirm. |
 | Recover a deletion | Open **Trash** and restore. |
 
 - **Registered workspaces**: the project tab lists the workspaces registered in DSH. Git repositories use the nearest Git root; other folders use the workspace directory, so no `git init` is required. Skills are scanned only when you expand a workspace.
 - **Independent copies**: disabling a project copy allows another enabled copy to take over, and the panel identifies the active source. Disable all copies to turn the skill off completely.
-- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH or Shared Agent can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. A workspace is never preselected, and Shared Agent is not available for workspaces.
+- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH, Shared Agent, or a registered workspace can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. A workspace is never preselected, and Shared Agent is not available for workspaces.
 - **Restore**: retired repository provenance belongs to the specific Trash entry and is reactivated only by an explicit restore, including the destination and update/rollback history. A different same-name skill does not inherit repository management. Uninstalling a Shared Agent copy affects every agent using that directory.
 
 ### Repository boundaries

@@ -466,18 +466,25 @@ function sameWorkspace(a: string, b: string) {
   return pathIdentity(a) === pathIdentity(b);
 }
 
+export async function indexRegisteredWorkspaces(registered?: string[]): Promise<Array<{ root: SkillRoot } | OperationError>> {
+  const list = Array.isArray(registered) ? registered.filter((item): item is string => typeof item === "string") : [];
+  const indexed: Array<{ root: SkillRoot } | OperationError> = [];
+  for (const workspace of list) indexed.push(await resolveWorkspaceTarget(workspace, list));
+  return indexed;
+}
+
 /**
  * 按安装记录里保存的项目根重新解析可写根。记录只保存路径，不代表授权：
  * 每次更新、回滚、卸载都要重新核对链接与重叠，路径失效时明确失败而不是回退到别处。
+ * 批量调用可传入同一次请求里已经解析好的登记索引，避免每个记录都重走全部工作区。
  */
-export async function projectRootForRecord(projectRoot: unknown, registered?: string[]): Promise<{ root: SkillRoot } | OperationError> {
+export async function projectRootForRecord(projectRoot: unknown, registered?: string[], indexed?: Array<{ root: SkillRoot } | OperationError>): Promise<{ root: SkillRoot } | OperationError> {
   if (typeof projectRoot !== "string" || !isAbsolute(projectRoot))
     return { ok: false, error: "安装记录中的工作区路径无效", code: "error.workspace.unavailable" };
   const saved = await nearestProjectRoot(projectRoot);
   if (!saved?.root || !sameWorkspace(saved.root, projectRoot))
     return { ok: false, error: `工作区目录不可用: ${projectRoot}`, code: "error.workspace.unavailable", params: { path: projectRoot } };
-  for (const workspace of registered ?? []) {
-    const target = await resolveWorkspaceTarget(workspace, registered);
+  for (const target of indexed ?? await indexRegisteredWorkspaces(registered)) {
     if ("root" in target && sameWorkspace(target.root.projectRoot!, projectRoot)) return target;
   }
   return { ok: false, error: "请选择已登记的工作区", code: "error.workspace.unregistered" };
@@ -1814,8 +1821,9 @@ async function restoreRootDefinition(metadata: TrashMetadata, options: MutationO
       params: { id: metadata.id },
     };
   const target = await projectRootForRecord(metadata.root.projectRoot, options.registeredWorkspaces);
+  if (!("root" in target)) return target;
   const scopedRoots = options.projectCwds === undefined ? null : await projectRoots(options.projectCwds);
-  const root = "root" in target && target.root.key === metadata.root.key && (!scopedRoots || scopedRoots.some(item => item.key === target.root.key)) ? target.root : null;
+  const root = target.root.key === metadata.root.key && (!scopedRoots || scopedRoots.some(item => item.key === target.root.key)) ? target.root : null;
   if (!root) {
     return {
       ok: false,
@@ -2765,9 +2773,9 @@ export async function createSkill(input: CreateInput, log?: Log, options: Mutati
   return { name, path: join(target, "SKILL.md"), root: definition.key };
 }
 
-export async function skillDetail(key: string, name: string, options: ScopeOptions = {}) {
+export async function skillDetail(key: string, name: string, options: ScopeOptions & { workspaceBound?: boolean } = {}) {
   const scopedRoots = await projectRoots(options.projectCwds);
-  const root = rootByKey(key) || scopedRoots.find((item) => item.key === key);
+  const root = options.workspaceBound ? scopedRoots.find((item) => item.key === key) : rootByKey(key) || scopedRoots.find((item) => item.key === key);
   if (!root)
     return {
       ok: false,

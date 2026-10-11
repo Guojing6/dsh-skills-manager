@@ -57,6 +57,8 @@ assert.equal(locationSelect.props.value, "dsh");
 assert.deepEqual(nodes(tree).filter((n) => n.type === "code").map((n) => n.children.join("")), ["C:\\Users\\me\\.dsh\\skills"], "路径只显示所选位置的一行");
 assert.equal(byLabel(tree, t("dest.workspace")), undefined, "用户目录时不出现工作区下拉");
 assert.equal(destinationReady(selection, workspaces), true);
+assert.equal(destinationReady({ scope: "user", location: "dsh", workspace: "" }, workspaces, [{ key: "dsh", path: "C:/u/.dsh/skills", available: false }]), false, "用户位置不可用时不能提交");
+assert.equal(destinationReady({ scope: "user", location: "agents", workspace: "" }, workspaces, [{ key: "dsh", path: "C:/u/.dsh/skills", available: false }, { key: "agents", path: "C:/u/.agents/skills", available: true }]), true, "换到可用的用户位置后可以提交");
 assert.deepEqual(destinationPayload(selection), { root: "dsh" }, "用户目录显式带 root，且不带 workspace");
 
 // 3. 切到指定工作区：出现下拉，不预选，当前会话不自动写入；未选时不可提交。

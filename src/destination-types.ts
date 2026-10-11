@@ -1,7 +1,7 @@
 import type * as React from "react";
 import type { Translate } from "./client-types.js";
 import type { WorkspaceRow } from "./core.js";
-import type { Diagnostic } from "./types.js";
+import type { RepositoryDestination } from "./types.js";
 
 /** 目标选择：用户目录（默认）或指定的已登记工作区。位置只在用户目录下才有两项可选。 */
 export type DestinationScope = "user" | "workspace";
@@ -11,13 +11,7 @@ export interface DestinationValue {
   /** 已登记工作区路径；用户目录下为空串。 */
   workspace: string;
 }
-export interface UserDestination {
-  key: "dsh" | "agents";
-  path: string;
-  label?: string;
-  available: boolean;
-  error?: Diagnostic;
-}
+export type UserDestination = RepositoryDestination;
 export interface DestinationPickerProps {
   t: Translate;
   value: DestinationValue;
@@ -34,5 +28,5 @@ export interface DestinationKit {
   DestinationPicker: DestinationPickerComponent;
   defaultDestination: () => DestinationValue;
   destinationPayload: (value: DestinationValue) => { root?: "dsh" | "agents"; workspace?: string };
-  destinationReady: (value: DestinationValue, workspaces: readonly WorkspaceRow[]) => boolean;
+  destinationReady: (value: DestinationValue, workspaces: readonly WorkspaceRow[], userDestinations?: readonly UserDestination[]) => boolean;
 }

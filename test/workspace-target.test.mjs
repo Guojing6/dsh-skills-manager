@@ -38,6 +38,10 @@ try {
   assert.equal(viaNested.root.projectRoot, resolve(gitProject));
   assert.equal((await core.projectRootForRecord(gitProject, [])).code, "error.workspace.unregistered", "安装记录不能自行授权");
   assert.equal((await core.projectRootForRecord(gitProject, [nested])).root.projectRoot, resolve(gitProject), "真实登记子目录可授权保存根");
+  const indexed = await core.indexRegisteredWorkspaces([gitProject, plainProject]);
+  assert.equal(indexed.filter((item) => item.root).length, 2, "一次索引解析全部登记工作区");
+  assert.equal((await core.projectRootForRecord(gitProject, [gitProject, plainProject], indexed)).root.projectRoot, resolve(gitProject), "共享索引仍能命中保存根");
+  assert.equal((await core.projectRootForRecord(plainProject, [gitProject, plainProject], indexed)).root.projectRoot, resolve(plainProject), "同一份索引可解析另一条记录");
   const driftParent = join(temp, "drift-parent");
   const driftProject = join(driftParent, "child");
   await mkdir(join(driftProject, ".git"), { recursive: true });

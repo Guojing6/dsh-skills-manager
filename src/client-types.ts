@@ -18,7 +18,6 @@ export type ApiRoutes = RepositoryRoutes & {
     '/state': ManagerSnapshot;
     '/workspaces': { items: Awaited<ReturnType<typeof listWorkspaces>> };
     '/workspace-skills': Success<Awaited<ReturnType<typeof workspaceSkills>>>;
-    '/workspace-toggle': unknown;
     '/import': ImportResult;
     '/detail': Detail;
     '/create': Success<Awaited<ReturnType<typeof createSkill>>>;

@@ -3590,8 +3590,13 @@ eq(
 );
 eq(
   (await restoreTrash(directProjectDeleted.id, null, { projectCwds: [] })).code,
+  "error.workspace.unregistered",
+  "project restore passes through an unregistered workspace instead of the old session error",
+);
+eq(
+  (await restoreTrash(directProjectDeleted.id, null, { projectCwds: [], registeredWorkspaces: [routeProjectNested] })).code,
   "error.trash.projectUnavailable",
-  "project restore refuses missing registry even with saved provenance",
+  "project restore refuses a registered project that is not in the active session",
 );
 const directProjectRestored = await restoreTrash(
   directProjectDeleted.id,

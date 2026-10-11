@@ -159,8 +159,7 @@ export function createRepositoryUI({ react, Modal, Input, Button, SourceSelect, 
     function changeInstallation() {
       if (!modal || (modal.type !== 'install' && modal.type !== 'uninstall')) return;
       const selected = modal, action = selected.type, chosen = destination;
-      if (action === 'install' && !destinationReady(chosen, workspaces)) return;
-      if (action === 'install' && chosen.scope === 'user' && !installRoots.some(item => item.key === chosen.location && item.available)) return;
+      if (action === 'install' && !destinationReady(chosen, workspaces, installRoots)) return;
       const scope = action === 'install' ? destinationPayload(chosen) : selected.copy && copyTarget(selected.copy);
       if (!scope) return;
       return perform(async () => {
@@ -253,12 +252,12 @@ export function createRepositoryUI({ react, Modal, Input, Button, SourceSelect, 
       let body;
       if (modal.type === 'install') body = h('div', { className: 'dssm-repo-panel', 'aria-busy': busy },
         h('div', { className: 'dssm-name' }, modal.skill.name),
-        h(DestinationPicker, { t, value: destination, disabled: busy, allowAgents: true, workspaces, userDestinations: installRoots as any,
+        h(DestinationPicker, { t, value: destination, disabled: busy, allowAgents: true, workspaces, userDestinations: installRoots,
           onChange: (next: Partial<DestinationValue>) => { if (!locked.current) setDestination({ ...destination, ...next }); } }),
         h('p', { className: 'dssm-note' }, t('repo.installLocationsHint')),
         h('p', { className: 'dssm-note' }, t('repo.installHint')),
         busy ? h('div', { role: 'status', 'aria-live': 'polite' }, t('repo.installProgress')) : null, feedbackNode,
-        h('div', { className: 'dssm-modal-actions' }, button('repo.cancel', close), button(busy ? 'repo.installing' : 'repo.install', changeInstallation, false, !destinationReady(destination, workspaces) || (destination.scope === 'user' && !installRoots.some(root => root.key === destination.location && root.available)))));
+        h('div', { className: 'dssm-modal-actions' }, button('repo.cancel', close), button(busy ? 'repo.installing' : 'repo.install', changeInstallation, false, !destinationReady(destination, workspaces, installRoots))));
       if (modal.type === 'uninstall') body = h('div', { className: 'dssm-repo-panel', 'aria-busy': busy },
         h('div', { className: 'dssm-name' }, modal.skill.name),
         modal.copy ? h('div', { className: 'dssm-repo-metadata' }, copyName(modal.copy)) : null,

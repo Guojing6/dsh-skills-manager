@@ -428,7 +428,7 @@ function apply(ctx: HostContext) {
       const scopedOptions = (scope: { projectCwds: string[] } | null) => scope ?? projectOptions();
       /** 用户级写入只开放 DSH 与 Shared Agent 两处；带工作区的请求一律只写项目 DSH。 */
       const userWriteOptions = (body: RequestBody, target: unknown) => ({ allowRepositoryRoot: !target && body.root === "agents" });
-      const requestRoot = async (key: string, cwds?: string[]) => rootByKey[key] || (await projectRoots(cwds ?? projectOptions().projectCwds)).find((root) => root.key === key);
+      const requestRoot = async (key: string, cwds?: string[]) => cwds ? (await projectRoots(cwds)).find((root) => root.key === key) : rootByKey[key] || (await projectRoots(projectOptions().projectCwds)).find((root) => root.key === key);
       /** 单项操作的统一入口：有 workspace 就在其作用域内解析根，无则沿用当前会话。 */
       const withScope = async <T>(body: RequestBody, action: (scope: { projectCwds: string[] } | null) => Promise<T>) => {
         const scope = await workspaceScope(body);
@@ -524,7 +524,7 @@ function apply(ctx: HostContext) {
             case "/api/dsh-skills-manager/trash-delete":
               return run(res, () => permanentlyDeleteTrash(String(body.id || ""), log));
             case "/api/dsh-skills-manager/detail":
-              return run(res, () => withScope(body, (scope) => skillDetail(String(body.root || "dsh"), String(body.name || ""), scopedOptions(scope))));
+              return run(res, () => withScope(body, (scope) => skillDetail(String(body.root || "dsh"), String(body.name || ""), scope ? { ...scope, workspaceBound: true } : projectOptions())));
             case "/api/dsh-skills-manager/create":
               return run(res, async () => {
                 const target = await workspaceTarget(body);

@@ -199,7 +199,7 @@ try {
   assert.equal("workspace" in toggleRequest.body, false);
   create.props.onClick(); await new Promise((resolve) => setImmediate(resolve)); render();
   find((node) => node.props["aria-label"] === t("dest.scope")).props.onChange({ target: { value: "workspace" } }); render();
-  assert.equal(nodes().filter((node) => node.children.includes(t("btn.create.now"))).at(-1).props.disabled, true, "未点选工作区时不能创建");
+  assert.equal(nodes().filter((node) => node.children.includes(t("btn.create.now"))).at(-1).props.disabled, true, "这个夹具没有工作区列表，切到工作区后不能创建");
   await selectSession(undefined);
   assert.equal(find((node) => node.props.title === t("create.title")), undefined, "会话切换关闭旧创建表单");
   let resolveOld;

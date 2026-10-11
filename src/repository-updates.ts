@@ -4,7 +4,7 @@ import type { Archive, FileDigest, RepositoryDependencies, SkillRequest, Install
 import { promises as fs } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
-import { managerHomePath, userRoots, projectRootForRecord, resolveWorkspaceTarget } from "./core.js";
+import { managerHomePath, userRoots, projectRootForRecord, resolveWorkspaceTarget, indexRegisteredWorkspaces } from "./core.js";
 
 const hash = (bytes: string | Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 const repositoryInstallKeys = new Set(["dsh", "agents"]);
@@ -20,9 +20,9 @@ export function repositoryInstallRoot(key: unknown = "dsh") {
  * 解析安装记录所在的可写根：工作区记录按保存的项目根重新校验，其余走用户目录。
  * 返回值的 path 即技能所在目录；工作区路径失效时抛出明确错误，不回退到全局。
  */
-export async function recordInstallRoot(record: { root?: unknown; workspace?: string }, registered?: string[]) {
+export async function recordInstallRoot(record: { root?: unknown; workspace?: string }, registered?: string[], indexed?: Awaited<ReturnType<typeof indexRegisteredWorkspaces>>) {
   if (record.workspace === undefined) return repositoryInstallRoot(record.root);
-  const resolved = await projectRootForRecord(record.workspace, registered);
+  const resolved = await projectRootForRecord(record.workspace, registered, indexed);
   if ("ok" in resolved && resolved.ok === false) throw Object.assign(failure(resolved.error, resolved.code || "error.workspace.unavailable"), { params: resolved.params });
   return (resolved as { root: any }).root;
 }
@@ -83,8 +83,9 @@ function changesBetween(before: FileDigest[], after: FileDigest[]) {
 export function createRepositoryUpdater({ read, write, repository, download, serialize, parseRepositoryInput, registeredWorkspaces }: RepositoryDependencies) {
   async function prepare(input: SkillRequest, includeArchive = false) {
     const { id, path } = input, data = await read();
-    const record = await selectInstallRecord(data.installs, input, registeredWorkspaces?.(), "没有可追溯的安装记录，不能在线更新");
-    const target = join((await recordInstallRoot(record, registeredWorkspaces?.())).path, record.name);
+    const registered = registeredWorkspaces?.();
+    const record = await selectInstallRecord(data.installs, input, registered, "没有可追溯的安装记录，不能在线更新");
+    const target = join((await recordInstallRoot(record, registered)).path, record.name);
     const current = fileIndex(await readSkillTree(target));
     let entries: Archive | undefined, next: FileDigest[], commit: string | null;
     if (input.rollback === true) {
@@ -144,12 +145,14 @@ export function createRepositoryUpdater({ read, write, repository, download, ser
   }
   async function sources() {
     const data = await read(), result: Record<string, InstallSource> = Object.create(null);
+    const registered = registeredWorkspaces?.();
+    const indexed = await indexRegisteredWorkspaces(registered);
     for (const record of data.installs.filter(i => i.complete && !i.trashId)) {
       const source = record.source || data.repositories.find(r => r.id === record.id);
       if (!source) continue;
       const parsed = parseRepositoryInput({ url: `${source.owner}/${source.name}`, ref: source.ref, subdirectory: source.subdirectory });
       try {
-        const root = await recordInstallRoot(record, registeredWorkspaces?.());
+        const root = await recordInstallRoot(record, registered, indexed);
         const realRoot = await fs.realpath(root.path);
         result[installationSourceKey(realRoot, record.name)] = { ...parsed, id: record.id, path: record.path, commit: record.commit, root: record.root || "dsh", ...(record.workspace ? { workspace: record.workspace } : {}) };
       } catch { /* 失效或未登记项目的记录不能挂到任何同名技能上。 */ }

@@ -240,6 +240,22 @@ try {
   assert.equal(response.status, 200, await response.clone().text());
   assert.equal(await exists(join(registered, ".dsh", "skills", "route-repo", "SKILL.md")), true);
 
+  response = await post("disable", { name: "user-still-ok", root: "dsh" });
+  assert.equal(response.status, 200, "不带 workspace 仍可停用全局技能");
+  response = await post("enable", { name: "user-still-ok", root: "dsh", workspace: registered });
+  assert.equal(response.status, 400, "带 workspace 时 root=dsh 不能改全局技能");
+  assert.equal(await exists(join(globalRoot, "user-still-ok", "SKILL.md")), true);
+  const afterSteal = (await (await fetch(`${base}/state`)).json()).data.roots.find((item) => item.key === "dsh").skills.find((item) => item.name === "user-still-ok");
+  assert.notEqual(afterSteal.enabled, true, "全局技能保持停用");
+  response = await post("detail", { name: "user-still-ok", root: "dsh", workspace: registered });
+  assert.equal(response.status, 400, "带 workspace 的详情不能读取全局技能");
+  response = await post("delete", { name: "user-still-ok", root: "dsh", workspace: registered });
+  assert.equal(response.status, 400, "带 workspace 的删除不能移走全局技能");
+  assert.equal(await exists(join(globalRoot, "user-still-ok", "SKILL.md")), true);
+  const projectKey = (await (await post("workspace-skills", { workspace: registered })).json()).data.roots.find((item) => item.kind === "project-dsh").key;
+  response = await post("disable", { name: "route-create", root: projectKey, workspace: registered });
+  assert.equal(response.status, 200, "工作区范围内仍可按项目根键停用");
+
   // 保存的项目根失效后，即便登记仍在，也不能改写父 Git 项目的同名文件。
   const parentSkill = join(temporary, "work", ".dsh", "skills", "route-repo", "SKILL.md");
   await mkdir(join(temporary, "work", ".git"), { recursive: true });

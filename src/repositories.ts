@@ -4,7 +4,7 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 import { unzipSync } from "fflate";
-import { managerHomePath, resolveWorkspaceTarget, repositoryDestinations, trashRootPath, listTrash, restoreTrash as restoreSkillTrash, parseSkillDoc, importUploadedSkill, deleteSkill, setSkillEnabled, state } from "./core.js";
+import { managerHomePath, resolveWorkspaceTarget, repositoryDestinations, trashRootPath, listTrash, restoreTrash as restoreSkillTrash, parseSkillDoc, importUploadedSkill, deleteSkill, setSkillEnabled, state, indexRegisteredWorkspaces } from "./core.js";
 import { createRepositoryUpdater, fileIndex, signature, readSkillTree, repositoryInstallRoot, recordInstallRoot, selectInstallRecord } from "./repository-updates.js";
 
 const LIMIT = 32 << 20;
@@ -200,10 +200,10 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
     }
     throw failure("仓库分支不存在");
   }
-  async function matches(record: InstallRecord, fingerprint = signature(record.files)) {
+  async function matches(record: InstallRecord, fingerprint = signature(record.files), registered = registeredWorkspaces?.(), indexed?: Awaited<ReturnType<typeof indexRegisteredWorkspaces>>) {
     try {
       safePath(record.name);
-      const rootPath = (await recordInstallRoot(record, registeredWorkspaces?.())).path;
+      const rootPath = (await recordInstallRoot(record, registered, indexed)).path;
       // 一次完整遍历同时检查链接、额外文件和内容变化，不能只检查已知文件。
       return signature(fileIndex(await readSkillTree(join(rootPath, record.name)))) === fingerprint;
     } catch { return false; }
@@ -220,13 +220,15 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
   async function recoverPending() {
     const data = await read(); let recovered = false;
     const restoredIds: string[] = [];
+    const registered = registeredWorkspaces?.();
+    const indexed = await indexRegisteredWorkspaces(registered);
     for (const record of data.installs.filter(record => !record.complete && !record.trashId)) {
-      if (await matches(record)) { record.complete = true; recovered = true; }
+      if (await matches(record, signature(record.files), registered, indexed)) { record.complete = true; recovered = true; }
     }
     for (const record of data.installs.filter(record => record.trashId && record.restoreFingerprint)) {
       // Intent or Trash absence alone cannot authorize a same-name replacement.
       // Require the atomic successful-restore receipt and exact restored files.
-      if (await hasRestoreReceipt(record) && await matches(record, record.restoreFingerprint)) {
+      if (await hasRestoreReceipt(record) && await matches(record, record.restoreFingerprint, registered, indexed)) {
         restoredIds.push(record.trashId!);
         delete record.trashId; delete record.restoreFingerprint; recovered = true;
       }
@@ -245,9 +247,11 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
     // 每次只读取一个目录，避免多个大技能并行读取使内存随安装数量增长。
     const matched = new Map<InstallRecord, boolean>();
     const present = new Set<InstallRecord>();
+    const registered = registeredWorkspaces?.();
+    const indexed = await indexRegisteredWorkspaces(registered);
     for (const record of data.installs.filter(record => record.complete && !record.trashId)) {
       try {
-        const files = fileIndex(await readSkillTree(join((await recordInstallRoot(record, registeredWorkspaces?.())).path, record.name)));
+        const files = fileIndex(await readSkillTree(join((await recordInstallRoot(record, registered, indexed)).path, record.name)));
         present.add(record);
         matched.set(record, signature(files) === signature(record.files));
       } catch { /* Missing or unsafe installed copies must not be deleted. */ }
@@ -350,8 +354,9 @@ export function createRepositoryManager({ fetchImpl = globalThis.fetch, log, reg
     uninstall: (input: SkillRequest) => serialize(async () => {
       const { id, path } = input;
       const data = await read();
-      const record = await selectInstallRecord(data.installs, input, registeredWorkspaces?.(), "没有可追溯的安装记录，不能卸载");
-      const root = await recordInstallRoot(record, registeredWorkspaces?.());
+      const registered = registeredWorkspaces?.();
+      const record = await selectInstallRecord(data.installs, input, registered, "没有可追溯的安装记录，不能卸载");
+      const root = await recordInstallRoot(record, registered);
       const fingerprint = signature(fileIndex(await readSkillTree(join(root.path, record.name))));
       const trashId = `${Date.now()}-${randomUUID()}`;
       // Retire write authorization before moving the copy. History belongs to

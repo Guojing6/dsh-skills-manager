@@ -13,9 +13,9 @@ export function destinationPayload(value: DestinationValue): { root?: "dsh" | "a
   return { root: value.location === "agents" ? "agents" : "dsh" };
 }
 
-/** 能否提交：工作区必须是列表里可用的一项，不接受已消失或不可用的旧路径。 */
-export function destinationReady(value: DestinationValue, workspaces: readonly WorkspaceRow[]): boolean {
-  if (value.scope === "user") return true;
+/** 能否提交：工作区必须是列表里可用的一项；传入用户位置时，所选位置也必须可用。 */
+export function destinationReady(value: DestinationValue, workspaces: readonly WorkspaceRow[], userDestinations?: readonly { key: string; available?: boolean }[]): boolean {
+  if (value.scope === "user") return !userDestinations || userDestinations.some((item) => item.key === value.location && item.available === true);
   return workspaces.some((row) => row.available && !!row.registeredPaths[0] && row.registeredPaths[0] === value.workspace);
 }
 

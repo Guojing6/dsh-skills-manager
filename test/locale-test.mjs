@@ -816,8 +816,8 @@ eq(
 );
 eq(
   translateError(mockT, { code: "error.unknown", error: "原文错误" }),
-  "原文错误",
-  "translateError falls back to error text on an unknown code",
+  "error.unknown",
+  "translateError keeps an unknown code instead of the server sentence",
 );
 eq(
   translateError(mockT, {
