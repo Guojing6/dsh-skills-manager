@@ -4,6 +4,17 @@
 
 ## Unreleased
 
+- Managing, restoring, or removing a project skill now stops if that workspace is no longer registered, or if the project root has changed. It does not write to another project.
+- The same repository skill can be installed in more than one place. Update, roll back, and uninstall apply only to the copy you select.
+- Unavailable destinations, repository errors, and dates follow the language and region selected in DSH. The chat card for a failed skill creation no longer appends the Chinese error text.
+
+- Trash entries now use lightly bordered cards with separate deletion time and source metadata. Actions wrap on narrow panels and follow the host theme; restore and permanent deletion behavior is unchanged.
+
+- Creating and importing can now also write to Shared Agent, matching repository installs. Codex, Claude and other agent directories stay read-only.
+- Creating, importing and installing from a repository can now target a registered workspace as well as your user directory. A workspace copy goes to that project's `.dsh/skills`. The user directory stays the default, no workspace is preselected, and the dialog warns that project files may be committed. Scope and the secondary dropdown sit side by side in equal-width columns and fill their columns: choose a location for the user directory or a workspace for workspace scope. Workspace names include paths only when needed to distinguish duplicates; the destination path is shown in a separate bordered box below.
+- The project tab now lists every registered workspace, collapsed by default, instead of following the current session. Skills are scanned when you expand a workspace. Toggle, details, trash and restore work per workspace.
+- Closes #27.
+
 ## 1.1.13 - 2026-10-07
 
 - Repository installs can go to DSH skills or Shared Agent. Codex, Claude and other agent directories stay read-only.

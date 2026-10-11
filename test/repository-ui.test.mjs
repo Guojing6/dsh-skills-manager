@@ -1,6 +1,7 @@
 // 验证真实 hooks/事件的筛选、折叠、安装位置选择、回收站卸载和更新行为。
 import assert from "node:assert/strict";
 import { createRepositoryUI, repositoryLocales } from "../src/repository-ui.ts";
+import { createDestinationKit, destinationLocales } from "../src/destination-picker.ts";
 let values = [], cursor = 0, effects = [], dependencies = [];
 const react = {
   createElement(type, props, ...children) { return { type, props: props || {}, children: children.flat(Infinity).filter((v) => v != null && typeof v !== "boolean") }; },
@@ -23,6 +24,7 @@ const configuredRoots = [
 ];
 let installRoots = structuredClone(configuredRoots);
 const calls = [];
+let workspaceRows = [];
 let finishInstall, finishUninstall;
 let failInstall = false, failUninstall = false;
 let finishRefresh, finishDetail;
@@ -31,6 +33,7 @@ let installedCalls = 0, failInstalledRefresh = false;
 const api = async (path, options) => {
   const body = options?.body ? JSON.parse(options.body) : undefined;
   calls.push({ path, body });
+  if (path === "/workspaces") return { items: structuredClone(workspaceRows) };
   if (path.endsWith("/install")) {
     await new Promise((resolve) => { finishInstall = resolve; });
     if (failInstall) throw new Error("下载超时，请重试");
@@ -52,13 +55,20 @@ const api = async (path, options) => {
 const Input = Object.assign(() => {}, { TextArea: Symbol("官方只读说明框") });
 const Button = Symbol("官方按钮");
 const isAction = (node, key) => (node.type === "button" || node.type === Button) && node.children.includes(key);
-const useUI = createRepositoryUI({ react, Modal: "modal", Input, Button, SourceSelect: Symbol("官方筛选"), api, headers: {}, translateError: (_t, e) => e.error || e.message });
+const OfficialSelect = Symbol("官方筛选");
+let hostLocale;
+const useUI = createRepositoryUI({ react, Modal: "modal", Input, Button, SourceSelect: OfficialSelect, destination: createDestinationKit({ react, SourceSelect: OfficialSelect, translateError: (_t, error) => error.error || error.message }), api, headers: {}, getLocale: () => hostLocale, translateError: (_t, e) => e.code === "error.repo.invalid" ? "已翻译的仓库错误" : e.error || e.message });
 let languagePrefix = "";
 const rootTranslations = { "root.codex": "Codex", "root.claude": "Claude", "root.windsurf-user": "Windsurf User" };
-const t = (key) => languagePrefix + (rootTranslations[key] || key);
+const t = (key) => key === "format.locale" ? "zh-CN" : languagePrefix + (rootTranslations[key] || key);
 let ui;
 function render() { cursor = 0; ui = useUI({ active: true, t, onInstalled: async () => { installedCalls++; if (failInstalledRefresh) throw new Error("本地列表刷新失败"); } }); }
-function nodes(node) { return !node || typeof node !== "object" ? [] : [node, ...node.children.flatMap(nodes)]; }
+// 目标选择器是函数组件：带 userDestinations 的节点展开成它渲染出的子树，其余沿用原遍历。
+function nodes(node) {
+  if (!node || typeof node !== "object") return [];
+  if (typeof node.type === "function" && node.props && "userDestinations" in node.props) return nodes(node.type(node.props));
+  return [node, ...node.children.flatMap(nodes)];
+}
 const all = () => [...nodes(ui.actions), ...nodes(ui.content)];
 const find = (predicate) => all().find(predicate);
 const dialog = () => find(n => n.type === "modal");
@@ -70,11 +80,15 @@ const settle = async () => { await new Promise(setImmediate); render(); };
 const clickNode = async node => { assert.ok(node, "必须找到可点击元素"); assert.ok(!node.props.disabled, "真实点击不能触发禁用按钮"); node.props.onClick(); await settle(); };
 const click = key => clickNode(find(n => isAction(n, key)));
 const clickModal = key => clickNode(modalAction(key));
-const radio = root => modalNodes().find(n => n.type === "input" && n.props.type === "radio" && n.props.value === root);
-const chooseRoot = root => { const node = radio(root); assert.ok(node, "所选位置必须可见"); assert.equal(node.props.disabled, false, "真实选择不能触发不可用位置"); node.props.onChange(); render(); };
-const checkedRoots = () => modalNodes().filter(n => n.type === "input" && n.props.type === "radio" && n.props.checked).map(n => n.props.value);
-const destinationLabels = () => modalNodes().filter(n => n.type === "label" && n.props.className === "dssm-repo-destination");
-const destinationText = root => nodes(destinationLabels().find(n => nodes(n).some(child => child.type === "input" && child.props.value === root))).flatMap(n => n.children.filter(c => typeof c === "string"));
+// 位置是并排在范围右侧的官方下拉：label 为翻译后的「位置」，选项为后端允许的位置。
+const locationSelect = () => modalNodes().find(n => n.type === OfficialSelect && n.props.label === "dest.location");
+const locationOption = root => locationSelect()?.props.options.find(o => o.value === root);
+// 与旧单选框同名的辅助：返回该位置的选项（不存在则 undefined），disabled 来自下拉选项
+const radio = root => { const option = locationOption(root); return option && { props: { disabled: option.disabled === true || locationSelect().props.disabled === true, checked: locationSelect().props.value === root, value: root, onChange: () => locationSelect().props.onChange(root) } }; };
+const chooseRoot = root => { const option = locationOption(root); assert.ok(option, "所选位置必须可见"); assert.ok(!option.disabled, "真实选择不能触发不可用位置"); locationSelect().props.onChange(root); render(); };
+const checkedRoots = () => { const select = locationSelect(); return select && select.props.value ? [select.props.value] : []; };
+const destinationLabels = () => locationSelect()?.props.options ?? [];
+const pathLines = () => modalNodes().filter(n => n.type === "code").map(n => n.children.join(""));
 
 assert.deepEqual(Object.keys(repositoryLocales.en).sort(), Object.keys(repositoryLocales.zh).sort(), "中英文词条必须同步");
 const allowedDestinationKeys = ["dsh", "agents"];
@@ -86,9 +100,13 @@ for (const locale of Object.values(repositoryLocales)) {
 }
 assert.match(repositoryLocales.en["repo.hint"], /DSH skills or Shared Agent/);
 assert.match(repositoryLocales.zh["repo.hint"], /DSH skills 或 Shared Agent/);
-assert.match(repositoryLocales.en["repo.installLocationsHint"], /Only DSH skills or Shared Agent/);
+assert.match(repositoryLocales.en["repo.hint"], /project.*\.dsh\/skills/i, "仓库提示说明项目写入边界");
+assert.match(repositoryLocales.zh["repo.hint"], /项目.*\.dsh\/skills/, "中文仓库提示说明项目写入边界");
+assert.match(repositoryLocales.en["repo.installLocationsHint"], /User.*DSH skills or Shared Agent/);
+assert.match(repositoryLocales.en["repo.installLocationsHint"], /[Pp]roject.*only.*\.dsh\/skills/);
 assert.match(repositoryLocales.en["repo.installLocationsHint"], /Missing directories are created after confirmation/);
-assert.match(repositoryLocales.zh["repo.installLocationsHint"], /只能选择 DSH skills 或 Shared Agent/);
+assert.match(repositoryLocales.zh["repo.installLocationsHint"], /用户目录.*DSH skills 或 Shared Agent/);
+assert.match(repositoryLocales.zh["repo.installLocationsHint"], /项目.*仅.*\.dsh\/skills/);
 assert.match(repositoryLocales.zh["repo.installLocationsHint"], /缺少的目录会在确认安装后创建/);
 render(); effects.splice(0).forEach((f) => f()); await settle();
 assert.equal(countCalls("/repositories"), 1, "进入仓库只读取一次列表");
@@ -130,13 +148,15 @@ assert.equal(dialog().props.title, "repo.install");
 assert.equal(countCalls("/repositories/install"), 0, "打开安装选择框不安装");
 assert.equal(radio("dsh").props.checked, true, "默认安装到 DSH");
 assert.equal(radio("agents").props.checked, false);
-assert.ok(modalNodes().find(n => n.type === "fieldset").children.some(n => n.type === "legend" && n.children.includes("repo.installDestination")), "单选组有名称");
+assert.equal(locationSelect().props.label, "dest.location", "位置下拉有名称");
 assert.equal(destinationLabels().length, allowedDestinationKeys.length, "后端返回的 Codex/Claude 等位置不能出现在选择器");
-assert.deepEqual(modalNodes().filter(n => n.type === "input" && n.props.type === "radio").map(n => n.props.value), allowedDestinationKeys);
+assert.deepEqual(destinationLabels().map(o => o.value), allowedDestinationKeys);
+assert.equal(modalNodes().some(n => n.type === "input" && n.props.type === "radio"), false, "不再使用单选框");
 for (const root of configuredRoots.filter(root => allowedDestinationKeys.includes(root.key))) {
-  assert.equal(radio(root.key).props.name, "dssm-repo-install-root", "原生单选框属于同一组");
-  assert.ok(destinationText(root.key).includes(root.path), "展示实际配置路径：" + root.key);
+  chooseRoot(root.key);
+  assert.deepEqual(pathLines(), [root.path], "路径只显示所选位置的实际配置路径：" + root.key);
 }
+chooseRoot("dsh");
 for (const key of ["codex", "claude", "gemini", "windsurf"]) assert.equal(radio(key), undefined, "只读 Agent 目录不可选：" + key);
 assert.ok(!modalNodes().some(n => n.type === "code" && n.children.some(c => c === "$DSH_HOME/skills" || c === "~/.agents/skills")), "不展示硬编码默认路径");
 assert.ok(modalNodes().some(n => n.children.includes("repo.installLocationsHint")));
@@ -193,7 +213,7 @@ assert.ok(modalAction("repo.uninstalling").props.disabled);
 assert.ok(modalNodes().some(n => n.props.role === "status" && n.children.includes("repo.uninstallProgress")));
 dialog().props.onClose(); render(); assert.ok(dialog(), "卸载期间不能关闭弹窗");
 finishUninstall(); await settle();
-assert.deepEqual(calls.find(c => c.path === "/repositories/uninstall").body, { id: "one", path: "skills/pdf" }, "卸载不接受客户端目录选择");
+assert.deepEqual(calls.find(c => c.path === "/repositories/uninstall").body, { id: "one", path: "skills/pdf", root: "agents" }, "卸载显式指向确认的用户副本");
 assert.equal(countCalls("/repositories"), beforeUninstallList + 1, "卸载完成必须 reload 仓库");
 assert.equal(installedCalls, 2, "卸载完成刷新宿主列表及回收站");
 assert.equal(dialog(), undefined);
@@ -262,9 +282,10 @@ await click("repo.refresh");
 assert.deepEqual(checkedRoots(), ["dsh"], "公共 Agent 不可用后重置到 DSH");
 assert.equal(radio("agents").props.disabled, true);
 assert.equal(radio("claude"), undefined);
-assert.ok(destinationText("agents").includes("Shared Agent root became unsafe"));
-assert.ok(destinationText("agents").includes("/configured/rejected-agents/skills"));
-radio("agents").props.onChange(); render();
+const unavailableText = modalNodes().flatMap(n => n.children.filter(c => typeof c === "string"));
+assert.ok(unavailableText.includes("Shared Agent root became unsafe"), "不可用原因写在下方");
+assert.ok(pathLines().includes("/configured/rejected-agents/skills"), "不可用位置的路径写在下方");
+locationSelect().props.onChange("agents"); render();
 assert.deepEqual(checkedRoots(), ["dsh"], "合成事件不能重新选择变为不可用的位置");
 await clickModal("repo.install");
 assert.equal(calls.filter(c => c.path === "/repositories/install").at(-1).body.root, "dsh", "不提交已经不可用的公共 Agent");
@@ -287,7 +308,7 @@ await click("repo.review");
 assert.ok(find(n => n.props.role === "alert" && n.children.includes("repo.modified")), "预览必须提示本地修改");
 assert.ok(!calls.some(c => c.path.endsWith("/update")), "打开预览不执行更新");
 await clickModal("repo.overwrite");
-assert.deepEqual(calls.find(c => c.path.endsWith("/update")).body, { id: "one", path: "skills/pdf", token: "checked", overwrite: true });
+assert.deepEqual(calls.find(c => c.path.endsWith("/update")).body, { id: "one", path: "skills/pdf", root: "dsh", token: "checked", overwrite: true });
 assert.ok(find(n => n.props.role === "status" && n.children.includes("repo.updateSuccess")), "更新后显示完成提示");
 assert.equal(rowAction("repo.uninstall").props.disabled, false);
 await click("repo.rollback");
@@ -347,4 +368,65 @@ for (const roots of [undefined, [], configuredRoots.map(root => ({ ...root, avai
   await clickModal("repo.cancel");
   assert.equal(countCalls("/repositories/install"), beforeInstall, "无可用目的地不发出写请求");
 }
+repos[0].error = { code: "error.repo.invalid", params: { path: "C:/bad" }, error: "EACCES: permission denied, open C:/bad" };
+installRoots = structuredClone(configuredRoots);
+await click("repo.refresh");
+assert.ok(all().some(n => n.props.role === "alert" && n.children.includes("已翻译的仓库错误 · C:/bad")), "中文 invalid 诊断也必须走统一翻译并保留有用参数");
+assert.equal(all().some(n => n.children.includes(repos[0].error.error)), false, "不能用英文系统原文覆盖中文翻译");
+delete repos[0].error;
+hostLocale = "en-GB";
+repos[0].refreshedAt = "2026-09-12T13:04:05Z";
+await click("repo.refresh"); await click("repo.manage");
+assert.ok(modalNodes().some(n => n.children.includes("repo.updated · " + new Date(repos[0].refreshedAt).toLocaleString("en-GB"))), "仓库刷新日期使用有效宿主 en-GB，不被词典区域覆盖");
+dialog().props.onClose(); render();
+
+// 多副本同一技能：两个用户目标、两个项目和未登记项目分别有独立管理动作。
+workspaceRows = [
+  { name: "alpha", path: "D:/work/alpha", projectRoot: "D:/work/alpha", registeredPaths: ["D:/work/alpha/packages/web"], available: true, skillCount: 1 },
+  { name: "beta", path: "D:/work/beta", projectRoot: "D:/work/beta", registeredPaths: ["D:/work/beta/sub"], available: true, skillCount: 1 },
+];
+const copy = (installedRoot, installedWorkspace) => ({ installedRoot, ...(installedWorkspace ? { installedWorkspace } : {}), tracked: true, status: "update", updateAvailable: true, canRollback: true, canUninstall: true });
+Object.assign(repos[0].skills[0], { name: "pdf", status: "update", installedRoot: "dsh", tracked: true, canUninstall: true, installations: [copy("dsh"), copy("agents"), copy("dsh", "d:/WORK/alpha/"), copy("dsh", "D:/work/beta"), copy("dsh", "D:/gone")] });
+await click("repo.refresh");
+const copies = () => all().filter(n => n.props.className === "dssm-repo-copy");
+assert.equal(copies().length, 5, "必须展示每个安装副本，不只取第一条");
+const copyCss = all().filter(n => n.type === "style").map(n => n.children.join("")).join("");
+assert.match(copyCss, /\.dssm-repo-copy\{[^}]*border:1px solid var\(--dsw-alias-border-l2/, "副本容器沿用宿主主题边框");
+assert.match(copyCss, /\.dssm-repo-copy\{[^}]*background:var\(--dsw-alias-bg-layer-1/, "副本容器沿用宿主主题背景");
+assert.match(copyCss, /\.dssm-repo-copy-actions\{[^}]*flex-wrap:wrap/, "独立按钮在窄容器可换行");
+for (const node of copies().slice(0, 4)) {
+  for (const action of ["repo.review", "repo.rollback", "repo.uninstall"]) assert.equal(nodes(node).find(n => isAction(n, action)).props.disabled, false, "每个目标都有独立按钮");
+}
+for (const action of ["repo.review", "repo.rollback", "repo.uninstall"]) {
+  const orphanAction = nodes(copies()[4]).find(n => isAction(n, action));
+  assert.equal(orphanAction.props.disabled, true, "没有登记路径的项目不能管理");
+  const before = calls.length;
+  orphanAction.props.onClick(); await settle();
+  assert.equal(calls.length, before, "合成事件也不允许退回用户级管理");
+}
+assert.ok(nodes(copies()[4]).some(n => n.children.includes("repo.destinationUnavailable")), "无法管理的原因必须有双语提示");
+const copyAction = (index, key) => nodes(copies()[index]).find(n => isAction(n, key));
+const targets = [{ root: "dsh" }, { root: "agents" }, { workspace: "D:/work/alpha/packages/web" }, { workspace: "D:/work/beta/sub" }];
+for (let index = 0; index < targets.length; index++) {
+  await clickNode(copyAction(index, "repo.review"));
+  assert.deepEqual(calls.filter(c => c.path === "/repositories/preview").at(-1).body, { id: "one", path: "skills/pdf", ...targets[index], rollback: false });
+  await clickModal("repo.overwrite");
+  assert.deepEqual(calls.filter(c => c.path === "/repositories/update").at(-1).body, { id: "one", path: "skills/pdf", ...targets[index], token: "checked", overwrite: true });
+  await clickNode(copyAction(index, "repo.rollback"));
+  assert.deepEqual(calls.filter(c => c.path === "/repositories/preview").at(-1).body, { id: "one", path: "skills/pdf", ...targets[index], rollback: true });
+  await clickModal("repo.overwrite");
+  assert.deepEqual(calls.filter(c => c.path === "/repositories/rollback").at(-1).body, { id: "one", path: "skills/pdf", ...targets[index], token: "checked", overwrite: true });
+  await clickNode(copyAction(index, "repo.uninstall")); await clickModal("repo.confirmUninstall");
+  assert.deepEqual(calls.filter(c => c.path === "/repositories/uninstall").at(-1).body, { id: "one", path: "skills/pdf", ...targets[index] });
+  finishUninstall(); await settle();
+}
+await click("repo.installElsewhere");
+const scopeSelect = modalNodes().find(n => n.props.label === "dest.scope");
+scopeSelect.props.onChange("workspace"); render();
+assert.equal(modalAction("repo.install").props.disabled, true, "另一位置安装仍不预选项目");
+const workspaceSelect = modalNodes().find(n => n.props.label === "dest.workspace");
+workspaceSelect.props.onChange("D:/work/beta/sub"); render();
+await clickModal("repo.install");
+assert.deepEqual(calls.filter(c => c.path === "/repositories/install").at(-1).body, { id: "one", path: "skills/pdf", workspace: "D:/work/beta/sub" }, "已安装技能还能指定另一项目，冲突由服务端处理");
+finishInstall(); await settle();
 console.log("仓库界面折叠、搜索、DSH/公共 Agent 安装位置、回收站卸载、错误重试、更新与恢复测试通过");

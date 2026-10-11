@@ -23,6 +23,10 @@ interface Session {
         agentPreset?: string;
     };
 }
+/** 宿主登记的工作区；只读 list，字段名在各版本里可能是 path 或 cwd。 */
+interface WorkspaceRegistry {
+    list?: () => Iterable<{ id?: unknown; path?: unknown; cwd?: unknown; title?: unknown }>;
+}
 interface Sessions {
     list: () => Session[];
     get?: (id: string) => Session | undefined;
@@ -35,6 +39,7 @@ export interface Agent {
     };
 }
 interface Services {
+    workspaceRegistry: WorkspaceRegistry;
     sessions: Sessions;
     agents: {
         list: () => Agent[];

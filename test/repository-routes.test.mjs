@@ -1,6 +1,7 @@
 // 通过真实 HTTP 请求验证仓库接口沿用 Host、Origin 与写请求标记校验。
 import assert from "node:assert/strict";
 import { createServer, request } from "node:http";
+import { EventEmitter } from "node:events";
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -27,6 +28,16 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const api = `http://127.0.0.1:${server.address().port}/api/dsh-skills-manager/repositories`;
 const headers = { "content-type": "application/json", "x-dsh-skills-manager": "1" };
 try {
+  const brokenRequest = new EventEmitter();
+  Object.assign(brokenRequest, { url: "/api/dsh-skills-manager/create", method: "POST", headers: { ...headers, host: "localhost" } });
+  let outerStatus, outerPayload;
+  const brokenResponse = new EventEmitter();
+  Object.assign(brokenResponse, { writeHead(status) { outerStatus = status; }, end(body) { outerPayload = JSON.parse(body); } });
+  const handling = route.handler(brokenRequest, brokenResponse);
+  brokenRequest.emit("error", Object.assign(new Error("业务读取失败"), { statusCode: 400, code: "error.workspace.unavailable", params: { path: "C:/missing", action: "restore" } }));
+  await handling;
+  assert.equal(outerStatus, 400);
+  assert.deepEqual(outerPayload.params, { path: "C:/missing", action: "restore" }, "外层响应保留完整业务参数");
   assert.equal((await fetch(api)).status, 200);
   const head = await fetch(api, { method: "HEAD" });
   assert.equal(head.status, 200); assert.equal(await head.text(), "");
@@ -81,7 +92,8 @@ try {
   const shared = (await (await fetch(managerApi + '/state')).json()).data.roots.find(root => root.key === 'agents');
   assert.equal(shared.skills.find(skill => skill.name === 'http-demo').installSource.root, 'agents', 'global source metadata follows the installation destination');
   assert.equal((await fetch(managerApi + '/delete', { method: 'POST', headers, body: JSON.stringify({ root: 'agents', name: 'http-demo', allowSharedAgent: true }) })).status, 400, 'request cannot opt into internal Shared Agent write permission');
-  const uninstall = await post('uninstall', { id, path: 'demo', root: 'dsh' });
+  assert.equal((await post('uninstall', { id, path: 'demo', root: 'dsh' })).status, 400, 'wrong root cannot select a Shared Agent copy');
+  const uninstall = await post('uninstall', { id, path: 'demo', root: 'agents' });
   assert.equal(uninstall.status, 200);
   const trash = (await uninstall.json()).data;
   assert.equal(trash.root.key, 'agents');

@@ -413,12 +413,12 @@ ok(
 );
 ok(
   clientSource.includes("function submitImport()") &&
-    clientSource.includes('post("/upload", payload'),
+    clientSource.includes('post("/upload", Object.assign({}, payload, destinationPayload('),
   "upload import uses the shared guarded mutation path",
 );
 ok(
   clientSource.includes("function submitCreate()") &&
-    clientSource.includes('post("/create", form'),
+    clientSource.includes('post("/create", Object.assign({}, form,'),
   "create uses the shared guarded mutation path",
 );
 ok(
@@ -2493,6 +2493,7 @@ applyHost({
     emitted.push(Array.from(arguments));
   },
   get(name) {
+    if (name === "workspaceRegistry") return { list: () => [{ path: routeProjectNested }] };
     if (name === "sessions") {
       return {
         list() {
@@ -3590,17 +3591,17 @@ eq(
 eq(
   (await restoreTrash(directProjectDeleted.id, null, { projectCwds: [] })).code,
   "error.trash.projectUnavailable",
-  "project restore waits until the original project is an active Session workspace",
+  "project restore refuses missing registry even with saved provenance",
 );
 const directProjectRestored = await restoreTrash(
   directProjectDeleted.id,
   null,
-  { projectCwds: [routeProjectNested] },
+  { registeredWorkspaces: [routeProjectNested] },
 );
 eq(
   directProjectRestored.root.key,
   writableProjectDefinition.key,
-  "project restore resolves the original root from current active Session cwd values",
+  "project restore resolves the original root from real registered paths",
 );
 ok(
   (await resolveEntry(
@@ -3934,6 +3935,11 @@ eq(
 ok(
   registeredTool && registeredTool.name === "create_skill",
   "host registers the conversational create_skill tool",
+);
+eq(
+  registeredTool.output.render(null, { ok: false, code: "error.skill.exists", error: "技能已存在: foo", params: { name: "foo" } })[0].text.includes("技能"),
+  false,
+  "create_skill failure card must not embed the Chinese error text",
 );
 
 // 同名候选必须经过上游真实的层内排序与跨层合并，单测候选数量无法证明运行时来源正确。

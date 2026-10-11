@@ -163,6 +163,7 @@ export interface RepositoryDestination {
 }
 export interface InstallSource extends RepositorySource {
     root?: RepositoryRoot;
+    workspace?: string;
     id: string;
     path: string;
     commit: string | null;
@@ -170,6 +171,8 @@ export interface InstallSource extends RepositorySource {
 export interface InstallRecord {
     /** Missing in legacy records: defaults to DSH. */
     root?: RepositoryRoot;
+    /** 安装到已登记工作区时保存的项目根；缺省表示用户目录。更新、回滚、卸载都按它定位。 */
+    workspace?: string;
     id: string;
     path: string;
     name: string;
@@ -198,6 +201,8 @@ export interface RepositoryInput {
 }
 export interface SkillRequest {
     root?: RepositoryRoot;
+    /** 宿主实际登记路径；每次管理重新解析后与记录保存的项目根匹配。 */
+    workspace?: string;
     id: string;
     path: string;
     rollback?: boolean;
@@ -206,6 +211,7 @@ export interface SkillRequest {
 }
 export type Serialize = <T>(task: () => T | Promise<T>, recover?: boolean) => Promise<T>;
 export interface RepositoryDependencies {
+    registeredWorkspaces?: () => string[] | undefined;
     read: () => Promise<RepositoryState>;
     write: (state: RepositoryState) => Promise<void>;
     repository: (state: RepositoryState, id: string) => Repository;
@@ -224,6 +230,8 @@ export interface RenameOptions {
     delayMs?: number;
 }
 export interface MutationOptions extends ScopeOptions {
+    /** 宿主登记的工作区路径列表，由路由从 workspaceRegistry 读取；缺省表示不允许写项目。 */
+    registeredWorkspaces?: string[];
     /** Internal repository operations only; never taken from HTTP request bodies. */
     allowRepositoryRoot?: boolean;
     repositoryEntryOnly?: boolean;

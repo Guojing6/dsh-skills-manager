@@ -10,6 +10,7 @@ const sandbox = await mkdtemp(join(tmpdir(), "dssm-repository-test-"));
 process.env.DSH_HOME = join(sandbox, "home");
 process.env.USERPROFILE = join(sandbox, "user");
 const { parseRepositoryInput, decodeRepositoryArchive, createRepositoryManager } = await import("../lib/repositories.js");
+const { installationSourceKey } = await import("../lib/repository-updates.js");
 let sha = "a".repeat(40);
 const doc = (name, description = "测试技能") => strToU8(`---\nname: ${name}\ndescription: ${description}\n---\n技能正文\n`);
 let archive = zipSync({ "repo-main/skills/pdf/SKILL.md": doc("pdf", "Use when: reviewing files"), "repo-main/skills/pdf/references/help.txt": strToU8("参考资料"), "repo-main/skills/docx/SKILL.md": doc("docx") });
@@ -143,7 +144,7 @@ try {
   broken = false;
   await assert.rejects(manager.install({ id: added.id, path: "../escape" }), /技能/);
   await manager.remove({ id: added.id });
-  assert.equal((await manager.sources()).pdf.owner, "example", "移除订阅保留安装来源");
+  assert.equal((await manager.sources())[installationSourceKey(join(process.env.DSH_HOME, "skills"), "pdf")].owner, "example", "移除订阅保留安装来源");
   assert.equal((await manager.list()).repositories.length, 0);
   assert.equal(await readFile(join(process.env.DSH_HOME, "skills/pdf/SKILL.md"), "utf8"), "用户本地修改", "移除仓库不删除已安装技能");
   const concurrent = await Promise.allSettled([manager.add({ url: "a/concurrent" }), manager.add({ url: "a/concurrent" })]);

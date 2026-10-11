@@ -27,9 +27,9 @@ This README describes **1.1.13**. See the [changelog](CHANGELOG.md) and [release
 Bring skills from your computer and projects into DSH without switching between Agent folders.
 
 - **Manage in one place**: browse collapsible source groups, search, read, and toggle skills.
-- **Global and project skills**: the project tab follows the current session, with project copies taking priority over global copies.
+- **Global and project skills**: the project tab lists every registered workspace, collapsed by default. Project copies take priority over global copies.
 - **Reuse existing skills**: supports Codex, Claude Code, Copilot, and other agents without modifying their source files when toggled.
-- **Create and import**: create a skill or import ZIP archives, folders, and `SKILL.md` files into global DSH.
+- **Create and import**: create a skill or import ZIP archives, folders, and `SKILL.md` files into your user directory (default) or a registered workspace. User-level writes can go to DSH skills or Shared Agent.
 - **Skill repositories**: discover public GitHub skills, install without overwriting local files, review updates and restore backups.
 - **Recover deleted skills**: DSH skills go to Trash first, so accidental deletions can be restored.
 
@@ -80,28 +80,28 @@ Restart DSH, refresh the page, and open **Settings → Skills**. To update, sele
 | Find a skill | Choose Global or Project, expand a source group, or use search and filters. |
 | Read its contents | Select **View details** for the skill body and source information. |
 | Enable or disable | Toggle the skill switch. This affects DSH without editing source files. |
-| Add a skill | Select **Create skill** or **Import into global DSH**. |
-| Install from a repository | Open **Repositories → Add repository**, enter a public GitHub URL, scan, click **Install**, choose **DSH skills** or **Shared Agent**, check its actual path, and confirm. |
+| Add a skill | Select **Create skill** or **Import skill**, then use the side-by-side dropdowns: choose **User directory** (default) or **Specific workspace** on the left, and a location or registered workspace on the right. Check the destination path below. A workspace copy is written to that project's `.dsh/skills` and may be committed to its repository. |
+| Install from a repository | Open **Repositories → Add repository**, enter a public GitHub URL, scan, click **Install**, use the same side-by-side dropdowns to choose the scope and location or workspace, check the destination path below, and confirm. |
 | Uninstall a repository skill | Click the red **Uninstall** button and confirm. The installed folder and local edits move to **Trash**, and **Install** becomes available again. |
 | Update repository skills | Select **Refresh & check updates**, then **Review update** to inspect changes and confirm backup and update. |
 | Roll back an update | Select **Restore previous version** for a skill with a backup, preview and confirm. |
-| Recover a deletion | Open **Trash** and restore. For project skills, return to a session in the original project first. |
+| Recover a deletion | Open **Trash** and restore. |
 
-- **Current project only**: Git repositories use the nearest Git root. Other folders use the current session working directory; no `git init` required.
+- **Registered workspaces**: the project tab lists the workspaces registered in DSH. Git repositories use the nearest Git root; other folders use the workspace directory, so no `git init` is required. Skills are scanned only when you expand a workspace.
 - **Independent copies**: disabling a project copy allows another enabled copy to take over, and the panel identifies the active source. Disable all copies to turn the skill off completely.
-- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH or Shared Agent can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation and file import still save to global DSH.
+- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH or Shared Agent can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. A workspace is never preselected, and Shared Agent is not available for workspaces.
 - **Restore**: retired repository provenance belongs to the specific Trash entry and is reactivated only by an explicit restore, including the destination and update/rollback history. A different same-name skill does not inherit repository management. Uninstalling a Shared Agent copy affects every agent using that directory.
 
 ### Repository boundaries
 
 - The header **Check for updates** updates the plugin itself. Repository **Refresh & check updates** checks skill contents without installing or replacing them; it shows animation, counts and the current repository.
-- Repository installation writes only to global DSH or Shared Agent (`~/.agents/skills`, overridable with `DSH_AGENTS_HOME`). The chooser shows the configured path and disables unsafe paths; a missing directory is created only after confirmation. Codex, Claude and other agent directories cannot be selected. Arbitrary paths, project destinations and plugin-managed caches are not writable. Missing destinations in legacy records default to DSH; updates and rollback follow the recorded destination. Public GitHub repositories are supported; private credentials and automatic updates are not. Removing a subscription keeps installed skills.
+- Repository installation writes to user-level DSH skills or Shared Agent (`~/.agents/skills`, overridable with `DSH_AGENTS_HOME`), or to a registered workspace's `<project>/.dsh/skills`. The chooser shows the configured path and disables unsafe paths; a missing directory is created only after confirmation. Codex, Claude and other agent directories cannot be selected. Arbitrary paths, unregistered project destinations and plugin-managed caches are not writable. Missing destinations in legacy records default to DSH; updates and rollback follow the recorded destination. Public GitHub repositories are supported; private credentials and automatic updates are not. Removing a subscription keeps installed skills.
 - Archives are limited to 32 MiB, including when filtering by subdirectory. Failed scans preserve the previous catalog; corrupt caches require refresh.
 - Local edits require explicit confirmation before replacement. Historical backups are not automatically cleaned and consume additional disk space.
 
 ## Supported Agent directories
 
-`~` means your home directory; `<project>` is the current session project root. These are default paths; configured DSH directory variables take precedence.
+`~` means your home directory; `<project>` is the project root of a registered workspace. These are default paths; configured DSH directory variables take precedence.
 
 | Source | Global directory | Project directory |
 | --- | --- | --- |

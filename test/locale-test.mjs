@@ -53,7 +53,7 @@ const literalSource = [
   await readFile(new URL("../src/plugin-update-ui.ts", import.meta.url), "utf8"),
 ].join("\n");
 const bundleSource = await readFile(
-  new URL("../lib/client.js", import.meta.url),
+  process.env.DSH_CLIENT_TEST_BUNDLE || new URL("../lib/client.js", import.meta.url),
   "utf8",
 );
 const manifest = JSON.parse(
@@ -752,8 +752,8 @@ eq(
   "summary counts match status-filter buckets",
 );
 ok(
-  DICT.zh["create.target"] && DICT.en["trash.source"],
-  "project create targets and Trash source labels are localized in both languages",
+  DICT.zh["dest.scope.workspace"] && DICT.en["dest.scope.workspace"] && DICT.zh["workspace.noSkills"] && DICT.en["workspace.noSkills"] && DICT.en["trash.source"],
+  "workspace destination, project page and Trash source labels are localized in both languages",
 );
 
 eq(
@@ -957,7 +957,7 @@ ok(
   "import modal renders upload feedback where it remains visible",
 );
 ok(
-  /setResult\(null\);\s*setUpload\(null\);\s*setModal\("import"\)/.test(source),
+  /setResult\(null\);\s*setUpload\(null\);\s*setImportDestination\(defaultDestination\(\)\);\s*setModal\("import"\)/.test(source),
   "opening import clears stale upload feedback and selection",
 );
 ok(
@@ -965,16 +965,16 @@ ok(
   "settings exposes an explicit refresh action for project file changes",
 );
 ok(
-  source.includes('t("create.globalTarget")') && !source.includes("value: form.root"),
-  "create dialog displays a fixed global destination",
+  source.includes("createDestination") && source.includes("allowAgents: true") && !source.includes("value: form.root"),
+  "create and import dialogs use the shared destination picker including Shared Agent",
 );
 ok(
   source.includes('t("trash.source", { source: trashRootLabel(item) })'),
   "Trash identifies the original user or project source before restore",
 );
 ok(
-  /allRoots\.find\(function\s*\(root\)[\s\S]{0,80}root\.key === "dsh"/.test(source),
-  "global creation stays available independently of the current project",
+  !source.includes("!createRoot") && source.includes("openCreate"),
+  "creation does not depend on the current project or on a single global root",
 );
 ok(
   source.includes("canToggleSource(root)") &&
@@ -1081,5 +1081,13 @@ for (const lang of ["zh", "en"]) {
   ok(result.text.includes(lang === "zh" ? "first；second" : "first; second"), `${lang} warning separator follows UI language`);
 }
 
+// en-GB 字典回退到 en-US 词典，但日期必须保留有效宿主区域。
+let hostActive = "en-GB";
+bundle.apply({ ...fakeCtx, effect() {}, locale: { ...fakeCtx.locale, getLocale() { return { active: hostActive, revision: 1, locales: [] }; } } });
+const britishT = key => DICT.en[key] || key;
+const britishDate = "2026-09-12T13:04:05Z";
+eq(bundle.formatTrashTime(britishT, britishDate), new Date(britishDate).toLocaleString("en-GB"), "en-GB 日期不被 en-US 字典回退覆盖");
+hostActive = "zh";
+eq(bundle.formatTrashTime(britishT, britishDate), new Date(britishDate).toLocaleString("zh"), "宿主有效 locale 优先于词典格式区域，语言切换实时读取");
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

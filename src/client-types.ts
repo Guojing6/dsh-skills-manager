@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import type { createRepositoryManager } from './repositories.js';
-import type { state, skillDetail, createSkill, listTrash } from './core.js';
+import type { state, skillDetail, createSkill, listTrash, listWorkspaces, workspaceSkills } from './core.js';
 import type { ImportResult } from './types.js';
 export type Translate = (key: string, params?: object) => string;
 type Success<T> = T extends {
@@ -16,6 +16,10 @@ export type RepositoryRoutes = {
 export type ApiRoutes = RepositoryRoutes & {
     '/repositories': Awaited<ReturnType<Manager['list']>>;
     '/state': ManagerSnapshot;
+    '/workspaces': { items: Awaited<ReturnType<typeof listWorkspaces>> };
+    '/workspace-skills': Success<Awaited<ReturnType<typeof workspaceSkills>>>;
+    '/workspace-toggle': unknown;
+    '/import': ImportResult;
     '/detail': Detail;
     '/create': Success<Awaited<ReturnType<typeof createSkill>>>;
     '/upload': ImportResult;
@@ -81,6 +85,8 @@ export interface ClientContext {
     locale: {
         register: (namespace: string, dictionary: Record<string, Record<string, string>>) => () => void;
         bind: (namespace: string) => Translate;
+        /** Public LocaleRuntime snapshot: already resolves locale.preference. */
+        getLocale?: () => { active: string };
     };
     slots: {
         inject: (name: string, factory: () => unknown) => unknown;
