@@ -255,6 +255,15 @@ try {
   const projectKey = (await (await post("workspace-skills", { workspace: registered })).json()).data.roots.find((item) => item.kind === "project-dsh").key;
   response = await post("disable", { name: "route-create", root: projectKey, workspace: registered });
   assert.equal(response.status, 200, "工作区范围内仍可按项目根键停用");
+  response = await post("category-create", { root: "project-dsh:0123456789abcdef", name: "假项目分类", workspace: registered });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).code, "error.category.root", "未登记项目键不能创建分类");
+  response = await post("category-create", { root: projectKey, name: "路由分类", workspace: registered });
+  assert.equal(response.status, 200, await response.clone().text());
+  const categoryId = (await response.json()).data.category.id;
+  response = await post("category-assign", { root: projectKey, name: "no-such-skill", category: categoryId, workspace: registered });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).code, "error.skill.notFound", "路由归类也不接受不存在的技能");
 
   // 保存的项目根失效后，即便登记仍在，也不能改写父 Git 项目的同名文件。
   const parentSkill = join(temporary, "work", ".dsh", "skills", "route-repo", "SKILL.md");

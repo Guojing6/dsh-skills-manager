@@ -1690,14 +1690,11 @@ async function checkedPolicyRootDefinition(root: RootInput): Promise<SkillRoot |
   return definition;
 }
 
-async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boolean, log?: Log) {
-  const definition = await checkedPolicyRootDefinition(root);
-  if (definition && definition.ok === false) return definition;
-  if (!definition) return readonlyError("toggle");
+async function applyPolicySkillEnabled(definition: SkillRoot, name: string, enabled: boolean, state: ManagerState) {
   const resolved = await resolveEntry(definition, name);
   if (resolved === null)
     return {
-      ok: false,
+      ok: false as const,
       error: `技能不存在: ${name}`,
       code: "error.skill.notFound",
       params: { name },
@@ -1714,7 +1711,7 @@ async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boo
     );
   } catch {
     return {
-      ok: false,
+      ok: false as const,
       error: `技能不存在: ${name}`,
       code: "error.skill.notFound",
       params: { name },
@@ -1722,7 +1719,7 @@ async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boo
   }
   if (!summary.hasFrontmatter) {
     return {
-      ok: false,
+      ok: false as const,
       error: `技能缺少完整 frontmatter，无法${enabled ? "启用" : "停用"}: ${name}`,
       code: "error.skill.noFrontmatter",
       params: { name, action: enabled ? "enable" : "disable" },
@@ -1730,18 +1727,14 @@ async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boo
   }
   if (!summary.loadable) {
     return {
-      ok: false,
+      ok: false as const,
       error: `技能结构不完整，无法${enabled ? "启用" : "停用"}: ${name}`,
       code: "error.skill.notLoadable",
       params: { name, action: enabled ? "enable" : "disable" },
     };
   }
-  const current = await readManagerState();
-  if (current.writable === false) return invalidManagerStateWrite();
-  const disabled = new Set(current.state.disabledSkills[definition.key] || []);
-  const explicitlyEnabled = new Set(
-    current.state.enabledSkills[definition.key] || [],
-  );
+  const disabled = new Set(state.disabledSkills[definition.key] || []);
+  const explicitlyEnabled = new Set(state.enabledSkills[definition.key] || []);
   if (enabled) {
     disabled.delete(name);
     explicitlyEnabled.add(name);
@@ -1749,15 +1742,26 @@ async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boo
     explicitlyEnabled.delete(name);
     disabled.add(name);
   }
-  current.state.disabledSkills[definition.key] = [...disabled].sort();
-  current.state.enabledSkills[definition.key] = [...explicitlyEnabled].sort();
+  state.disabledSkills[definition.key] = [...disabled].sort();
+  state.enabledSkills[definition.key] = [...explicitlyEnabled].sort();
+  return { root: definition.key, name, enabled: enabled === true };
+}
+
+async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boolean, log?: Log) {
+  const definition = await checkedPolicyRootDefinition(root);
+  if (definition && definition.ok === false) return definition;
+  if (!definition) return readonlyError("toggle");
+  const current = await readManagerState();
+  if (current.writable === false) return invalidManagerStateWrite();
+  const result = await applyPolicySkillEnabled(definition, name, enabled, current.state);
+  if (result && result.ok === false) return result;
   await writeManagerState(current.state);
   if (log)
     log(
       enabled ? "policy-enable" : "policy-disable",
       `${enabled ? "启用" : "停用"} ${definition.key}/${name}（本地策略，源文件不变）`,
     );
-  return { root: definition.key, name, enabled: enabled === true };
+  return result;
 }
 
 // ── 启用 / 停用（同时控制模型与 / 手动调用，非破坏）──────────────────────────
@@ -1771,18 +1775,27 @@ function categoryError(code: string, error: string, params?: Record<string, unkn
   return { ok: false, code, error, ...(params ? { params } : {}) };
 }
 
-async function writableCategoryState(key: string) {
+async function resolvedCategoryRoot(key: string, options: ScopeOptions = {}) {
   const rootKey = categoryRootKey(key);
-  if (!rootKey) return categoryError("error.category.root", `技能来源不存在: ${key}`, { root: key });
-  const current = await readManagerState();
-  if (current.writable === false) return invalidManagerStateWrite();
-  if (!current.state.categories[rootKey]) current.state.categories[rootKey] = [];
-  if (!current.state.categoryMembers[rootKey]) current.state.categoryMembers[rootKey] = Object.create(null);
-  return { rootKey, state: current.state };
+  if (!rootKey) return null;
+  const user = rootByKey(rootKey);
+  if (user) return user;
+  if (!PROJECT_ROOT_KEY_RE.test(rootKey)) return null;
+  return (await projectRoots(options.projectCwds)).find((item) => item.key === rootKey) || null;
 }
 
-export async function createCategory(key: string, name: string, log?: Log) {
-  const ready = await writableCategoryState(key);
+async function writableCategoryState(key: string, options: ScopeOptions = {}) {
+  const root = await resolvedCategoryRoot(key, options);
+  if (!root) return categoryError("error.category.root", `技能来源不存在: ${key}`, { root: key });
+  const current = await readManagerState();
+  if (current.writable === false) return invalidManagerStateWrite();
+  if (!current.state.categories[root.key]) current.state.categories[root.key] = [];
+  if (!current.state.categoryMembers[root.key]) current.state.categoryMembers[root.key] = Object.create(null);
+  return { rootKey: root.key, root, state: current.state };
+}
+
+export async function createCategory(key: string, name: string, log?: Log, options: ScopeOptions = {}) {
+  const ready = await writableCategoryState(key, options);
   if ("ok" in ready) return ready;
   const label = String(name || "").trim();
   if (!label || label.length > CATEGORY_NAME_MAX)
@@ -1796,8 +1809,8 @@ export async function createCategory(key: string, name: string, log?: Log) {
   return { root: ready.rootKey, category };
 }
 
-export async function renameCategory(key: string, id: string, name: string, log?: Log) {
-  const ready = await writableCategoryState(key);
+export async function renameCategory(key: string, id: string, name: string, log?: Log, options: ScopeOptions = {}) {
+  const ready = await writableCategoryState(key, options);
   if ("ok" in ready) return ready;
   const label = String(name || "").trim();
   const list = ready.state.categories[ready.rootKey];
@@ -1813,8 +1826,8 @@ export async function renameCategory(key: string, id: string, name: string, log?
   return { root: ready.rootKey, category };
 }
 
-export async function deleteCategory(key: string, id: string, log?: Log) {
-  const ready = await writableCategoryState(key);
+export async function deleteCategory(key: string, id: string, log?: Log, options: ScopeOptions = {}) {
+  const ready = await writableCategoryState(key, options);
   if ("ok" in ready) return ready;
   const list = ready.state.categories[ready.rootKey];
   if (!list.some((item) => item.id === id)) return categoryError("error.category.notFound", "分类不存在", { id });
@@ -1827,27 +1840,28 @@ export async function deleteCategory(key: string, id: string, log?: Log) {
   return { root: ready.rootKey, id };
 }
 
-export async function assignSkillCategory(key: string, skillName: string, categoryId: string, log?: Log) {
-  const ready = await writableCategoryState(key);
+export async function assignSkillCategory(key: string, skillName: string, categoryId: string, log?: Log, options: ScopeOptions = {}) {
+  const ready = await writableCategoryState(key, options);
   if ("ok" in ready) return ready;
   if (!validStateSkillName(skillName))
     return categoryError("error.skill.notFound", `技能不存在: ${skillName}`, { name: skillName });
-  if (categoryId && !ready.state.categories[ready.rootKey].some((item) => item.id === categoryId))
-    return categoryError("error.category.notFound", "分类不存在", { id: categoryId });
-  if (categoryId) ready.state.categoryMembers[ready.rootKey][skillName] = categoryId;
-  else delete ready.state.categoryMembers[ready.rootKey][skillName];
+  if (categoryId) {
+    const entry = await resolveEntry(ready.root, skillName);
+    if (!entry)
+      return categoryError("error.skill.notFound", `技能不存在: ${skillName}`, { name: skillName });
+    if (!ready.state.categories[ready.rootKey].some((item) => item.id === categoryId))
+      return categoryError("error.category.notFound", "分类不存在", { id: categoryId });
+    ready.state.categoryMembers[ready.rootKey][skillName] = categoryId;
+  } else delete ready.state.categoryMembers[ready.rootKey][skillName];
   await writeManagerState(ready.state);
   if (log) log("category-assign", `${ready.rootKey}/${skillName} 归入 ${categoryId || "未分类"}`);
   return { root: ready.rootKey, name: skillName, categoryId: categoryId || null };
 }
 
 export async function setCategoryEnabled(key: string, categoryId: string, enabled: boolean, log?: Log, options: ScopeOptions = {}) {
-  const ready = await writableCategoryState(key);
+  const ready = await writableCategoryState(key, options);
   if ("ok" in ready) return ready;
-  let root = rootByKey(ready.rootKey) || null;
-  if (!root && PROJECT_ROOT_KEY_RE.test(ready.rootKey))
-    root = (await projectRoots(options.projectCwds)).find((item) => item.key === ready.rootKey) || null;
-  if (!root) return categoryError("error.category.root", `技能来源不存在: ${key}`, { root: key });
+  const root = ready.root;
   if (categoryId && categoryId !== "*" && !ready.state.categories[ready.rootKey].some((item) => item.id === categoryId))
     return categoryError("error.category.notFound", "分类不存在", { id: categoryId });
   const scanned = (await scanEntries(root)).entries.map((entry) => entry.name);
@@ -1858,17 +1872,21 @@ export async function setCategoryEnabled(key: string, categoryId: string, enable
       ? Object.entries(members).filter(([, id]) => id === categoryId).map(([name]) => name)
       : scanned.filter((name) => !members[name]);
   const skipped: string[] = [];
-  let changed = 0;
+  const changedNames: string[] = [];
   for (const name of names) {
-    const result = await setPolicySkillEnabled(root, name, enabled, log);
+    const result = await applyPolicySkillEnabled(root, name, enabled, ready.state);
     if (result && result.ok === false) {
       if (result.code === "error.skill.notLoadable" || result.code === "error.skill.noFrontmatter") skipped.push(name);
       else if (result.code !== "error.skill.notFound") return result;
       continue;
     }
-    changed += 1;
+    changedNames.push(name);
   }
-  return { root: ready.rootKey, categoryId: categoryId || null, enabled: enabled === true, changed, skipped };
+  if (changedNames.length) await writeManagerState(ready.state);
+  if (log)
+    for (const name of changedNames)
+      log(enabled ? "policy-enable" : "policy-disable", `${enabled ? "启用" : "停用"} ${ready.rootKey}/${name}（本地策略，源文件不变）`);
+  return { root: ready.rootKey, categoryId: categoryId || null, enabled: enabled === true, changed: changedNames.length, skipped };
 }
 
 async function safeExistingEntryPaths(root: string, name: string) {
@@ -2167,6 +2185,17 @@ export async function restoreTrash(id: string, log?: Log, options: MutationOptio
   }
 }
 
+async function forgetCategoryMember(metadata: TrashMetadata) {
+  const key = metadata.root?.key;
+  if (!key || !validStateSkillName(metadata.name)) return;
+  const current = await readManagerState();
+  if (current.writable === false) return;
+  const members = current.state.categoryMembers[key];
+  if (!members || !members[metadata.name]) return;
+  delete members[metadata.name];
+  await writeManagerState(current.state);
+}
+
 export async function permanentlyDeleteTrash(id: string, log?: Log) {
   const metadata = await readTrashMetadata(id);
   if (!metadata)
@@ -2177,6 +2206,7 @@ export async function permanentlyDeleteTrash(id: string, log?: Log) {
       params: { id },
     };
   await fs.rm(join(trashRootPath(), id), { recursive: true, force: true });
+  await forgetCategoryMember(metadata);
   if (log) log("trash-delete", `永久删除回收站条目 ${metadata.name} (${id})`);
   return { id, name: metadata.name };
 }

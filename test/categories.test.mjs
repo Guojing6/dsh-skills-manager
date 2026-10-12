@@ -9,7 +9,7 @@ process.env.DSH_HOME = join(temporary, "dsh");
 process.env.DSH_AGENTS_HOME = join(temporary, "agents");
 process.env.DSH_CODEX_HOME = join(temporary, "codex");
 process.env.HOME = process.env.USERPROFILE = join(temporary, "user");
-const { createCategory, renameCategory, deleteCategory, assignSkillCategory, setCategoryEnabled, readManagerState, state } = await import("../lib/core.js");
+const { createCategory, renameCategory, deleteCategory, assignSkillCategory, setCategoryEnabled, readManagerState, state, projectRoots, deleteSkill, restoreTrash, permanentlyDeleteTrash } = await import("../lib/core.js");
 
 const skillText = (name) => `---\nname: ${name}\ndescription: 测试技能\n---\n正文\n`;
 const writeSkill = async (root, name, text = skillText(name)) => {
@@ -80,6 +80,49 @@ assert.equal(await readFile(kept, "utf8"), before, "删除分类不搬文件");
 
 const stored = await readManagerState();
 assert.equal(stored.writable, true, "旧状态形状之外的分类字段不能把状态判坏");
+
+const ghost = await createCategory("dsh", "幽灵");
+const missing = await assignSkillCategory("dsh", "no-such-skill", ghost.category.id);
+assert.equal(missing.ok, false);
+assert.equal(missing.code, "error.skill.notFound", "归类不存在的技能必须失败");
+assert.equal((await readManagerState()).state.categoryMembers.dsh?.["no-such-skill"], undefined, "失败的归类不能落盘");
+
+const fakeKey = "project-dsh:0123456789abcdef";
+for (const result of [
+  await createCategory(fakeKey, "假项目分类"),
+  await renameCategory(fakeKey, "deadbeefdeadbeef", "改名"),
+  await deleteCategory(fakeKey, "deadbeefdeadbeef"),
+  await assignSkillCategory(fakeKey, "alpha", ""),
+]) {
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "error.category.root", "未登记的项目来源不能写入分类");
+}
+assert.equal((await readManagerState()).state.categories[fakeKey], undefined, "伪造项目键不能留下分类");
+
+const project = join(temporary, "workspace");
+await mkdir(join(project, ".git"), { recursive: true });
+await writeSkill(join(project, ".dsh", "skills"), "alpha");
+const projectRoot = (await projectRoots([project])).find((item) => item.kind === "project-dsh");
+assert.ok(projectRoot, "测试工作区应解析出项目 DSH 来源");
+const unbound = await createCategory(projectRoot.key, "无作用域");
+assert.equal(unbound.code, "error.category.root", "没有工作区作用域时不能写项目分类");
+const projectCategory = await createCategory(projectRoot.key, "项目分类", undefined, { projectCwds: [project] });
+assert.equal(projectCategory.ok, undefined);
+const projectAssigned = await assignSkillCategory(projectRoot.key, "alpha", projectCategory.category.id, undefined, { projectCwds: [project] });
+assert.equal(projectAssigned.categoryId, projectCategory.category.id);
+
+await writeSkill(dsh, "purge-skill");
+const purgeCategory = await createCategory("dsh", "待清");
+await assignSkillCategory("dsh", "purge-skill", purgeCategory.category.id);
+const trashed = await deleteSkill(dsh, "purge-skill");
+assert.equal((await readManagerState()).state.categoryMembers.dsh["purge-skill"], purgeCategory.category.id, "进回收站时保留分类");
+await restoreTrash(trashed.id);
+assert.equal((await state()).roots.find((root) => root.key === "dsh").skills.find((item) => item.name === "purge-skill").categoryId, purgeCategory.category.id, "恢复后仍在原分类");
+const trashedAgain = await deleteSkill(dsh, "purge-skill");
+await permanentlyDeleteTrash(trashedAgain.id);
+assert.equal((await readManagerState()).state.categoryMembers.dsh?.["purge-skill"], undefined, "永久删除清掉分类成员");
+await writeSkill(dsh, "purge-skill");
+assert.equal((await state()).roots.find((root) => root.key === "dsh").skills.find((item) => item.name === "purge-skill").categoryId, null, "同名新建不继承已删除技能的分类");
 
 await rm(temporary, { recursive: true, force: true });
 console.log("categories ok");
