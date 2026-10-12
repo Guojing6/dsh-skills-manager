@@ -164,7 +164,7 @@ try {
   assert.equal(find((node) => node.props.title === t("confirm.delete.title")), undefined, "取消后留在回收站 Tab");
   assert.deepEqual(rows(), ["removed-b"]);
   find((node) => node.props["aria-label"] === t("btn.delete.forever")).props.onClick(); render();
-    nodes().filter((node) => node.children.includes(t("btn.delete.forever"))).at(-1).props.onClick();
+  nodes().filter((node) => node.children.includes(t("btn.delete.forever"))).at(-1).props.onClick();
   await new Promise((resolve) => setImmediate(resolve)); render();
   assert.ok(toggleRequest.url.endsWith("/trash-delete"));
   assert.deepEqual(toggleRequest.body, { id: "trash-b" });

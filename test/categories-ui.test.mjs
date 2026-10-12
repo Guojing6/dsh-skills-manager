@@ -187,5 +187,12 @@ try {
   assert.ok(workspaceOptions.includes("empty-notes"), "创建下拉仍列出没有技能的已登记工作区");
   assert.ok(workspaceOptions.includes("alpha"));
 
+  find((node) => node.props.placeholder === t("search.placeholder")).props.onChange({ target: { value: "kept" } });
+  render();
+  const searched = nodes(sources().find((node) => textOf(node).includes("kept"))).find((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "工作");
+  assert.deepEqual(nodes(searched).filter((node) => node.props.className === "dssm-name").map((node) => node.children[0]), ["kept"], "搜索只显示匹配技能");
+  assert.equal(nodes(searched).find((node) => node.props["aria-label"] === t("category.toggle") + " 工作").props.checked, false, "搜索不能把分类开关显示成整组已开启");
+  assert.ok(textOf(searched).includes(t("category.progress", { count: 2, enabled: 1, usable: 2 })), "分类数量仍按整组计算");
+
   console.log("categories ui ok");
 } finally { globalThis.fetch = originalFetch; }

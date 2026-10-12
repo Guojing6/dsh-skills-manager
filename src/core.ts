@@ -2186,6 +2186,7 @@ export async function restoreTrash(id: string, log?: Log, options: MutationOptio
 }
 
 async function forgetCategoryMember(metadata: TrashMetadata) {
+  // 回收站目录已经删除。这里单独再写一次状态；写入失败时成员记录会留下，同名新建可能回到旧分类。不再回滚已删除的回收站目录。
   const key = metadata.root?.key;
   if (!key || !validStateSkillName(metadata.name)) return;
   const current = await readManagerState();

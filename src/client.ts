@@ -430,10 +430,11 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
         if (canToggleSource(root)) actions.push(h(SkillSwitch, { on: root.enabled, disabled: busy, label: t("source.toggle") + " " + displayName, onClick: function () { post(root.enabled ? "/source-disable" : "/source-enable", scoped); } }));
         return h("span", { className: "dssm-source-actions", onClick: function (event: React.MouseEvent) { event.stopPropagation(); } }, actions);
       }
-      function renderCategory(root: RootView, bucket: { id: string; name: string; locked: boolean; skills: { root: RootView; skill: SkillView }[] }, workspacePath?: string, keyPrefix?: string) {
+      function renderCategory(root: RootView, bucket: { id: string; name: string; locked: boolean; skills: { root: RootView; skill: SkillView }[]; scope?: { root: RootView; skill: SkillView }[] }, workspacePath?: string, keyPrefix?: string) {
         var expansionKey = JSON.stringify(["category", keyPrefix || "", root.key, bucket.id || "none"]);
         var open = expanded[expansionKey] === undefined ? true : expanded[expansionKey];
-        var usable = bucket.skills.filter(function (row) { return row.skill.loadable !== false; });
+        var counted = bucket.scope || bucket.skills;
+        var usable = counted.filter(function (row) { return row.skill.loadable !== false; });
         var enabledCount = usable.filter(function (row) { return isSkillEnabled(row.skill); }).length;
         var allOn = usable.length > 0 && enabledCount === usable.length;
         var scoped = function (extra: Record<string, unknown>) { return workspacePath ? Object.assign({}, extra, { workspace: workspacePath }) : extra; };
@@ -441,7 +442,7 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
           h("div", { className: "dssm-cat-head" },
             h("button", { type: "button", className: "dssm-cat-main", "aria-expanded": open, onClick: function () { setExpanded(function (previous) { var next: Record<string, boolean> = {}; next[expansionKey] = !open; return Object.assign({}, previous, next); }); } },
               h("span", { className: "dssm-cat-title" }, bucket.name),
-              h("span", { className: "dssm-count" }, t("category.progress", { count: bucket.skills.length, enabled: enabledCount, usable: usable.length }))),
+              h("span", { className: "dssm-count" }, t("category.progress", { count: counted.length, enabled: enabledCount, usable: usable.length }))),
             h("span", { className: "dssm-source-actions", onClick: function (event: React.MouseEvent) { event.stopPropagation(); } },
               bucket.locked ? null : iconButton(t("category.rename"), strokeIcon("M9.2 2.8l4 4L6.2 13.8H2.2v-4z"), function () { setCategoryName(bucket.name); setModal({ type: "category-rename", root: root.key, id: bucket.id, name: bucket.name, workspace: workspacePath }); }, false, busy),
               bucket.locked ? null : iconButton(t("category.delete"), strokeIcon("M3.5 4.5h9M6.5 4.5V3h3v1.5M5 4.5l.7 8.5h4.6L11 4.5"), function () { setModal({ type: "category-delete", root: root.key, id: bucket.id, name: bucket.name, workspace: workspacePath }); }, true, busy),
@@ -450,17 +451,20 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
               }))),
           open ? (bucket.skills.length ? h(List, { split: false }, bucket.skills.map(function (row) { return renderSkill(root, row.skill, workspacePath); })) : h("div", { className: "dssm-empty" }, t("category.empty"))) : null);
       }
-      function renderSourceBody(root: RootView, filtered: { root: RootView; skill: SkillView }[], workspacePath?: string, keyPrefix?: string) {
+      function renderSourceBody(root: RootView, filtered: { root: RootView; skill: SkillView }[], workspacePath?: string, keyPrefix?: string, scopeRows?: { root: RootView; skill: SkillView }[]) {
         var categories = root.categories || [];
         if (!categories.length) return filtered.length ? h(List, { split: false }, filtered.map(function (row) { return renderSkill(root, row.skill, workspacePath); })) : h("div", { className: "dssm-empty" }, t("empty.source"));
         var known: Record<string, boolean> = {};
+        var scope = scopeRows || filtered;
         categories.forEach(function (item) { known[item.id] = true; });
-        var buckets = categories.map(function (item) { return { id: item.id, name: item.name, locked: false, skills: filtered.filter(function (row) { return row.skill.categoryId === item.id; }) }; });
-        buckets.push({ id: "", name: t("category.uncategorized"), locked: true, skills: filtered.filter(function (row) { return !row.skill.categoryId || !known[row.skill.categoryId]; }) });
+        var inCategory = function (list: { root: RootView; skill: SkillView }[], id: string) { return list.filter(function (row) { return id ? row.skill.categoryId === id : !row.skill.categoryId || !known[row.skill.categoryId]; }); };
+        var buckets = categories.map(function (item) { return { id: item.id, name: item.name, locked: false, skills: inCategory(filtered, item.id), scope: inCategory(scope, item.id) }; });
+        buckets.push({ id: "", name: t("category.uncategorized"), locked: true, skills: inCategory(filtered, ""), scope: inCategory(scope, "") });
         var searching = !!(query || filters.status);
         return h("div", null, h("p", { className: "dssm-note dssm-cat-note" }, t("category.note")), buckets.filter(function (bucket) { return !searching || bucket.skills.length; }).map(function (bucket) { return renderCategory(root, bucket, workspacePath, keyPrefix); }));
       }
       function renderRoot(root: RootView, workspacePath?: string, rowsForRoot?: { root: RootView; skill: SkillView }[], keyPrefix?: string) {
+        var scopeRows = (rowsForRoot || rows).filter(function (row) { return row.root.key === root.key; });
         var filtered = (rowsForRoot || filteredRows).filter(function (row) { return row.root.key === root.key; });
         if (activeSource && root.key !== activeSource || (query || filters.status) && !filtered.length) return null;
         var expansionKey = JSON.stringify([filterKey, keyPrefix || "", root.key, query, activeSource, filters.status]);
@@ -474,7 +478,7 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
             key: root.key,
             label: h("div", { className: "dssm-source-label" }, h("span", { className: "dssm-source-title" }, displayName), h("span", { className: "dssm-count" }, t(countKey("summary.group", filtered.length), { count: filtered.length })), h("span", { className: "dssm-source-path", title: root.path }, root.path)),
             extra: sourceExtra(root, workspacePath, displayName),
-            children: open ? renderSourceBody(root, filtered, workspacePath, keyPrefix) : null,
+            children: open ? renderSourceBody(root, filtered, workspacePath, keyPrefix, scopeRows) : null,
           }],
         });
       }

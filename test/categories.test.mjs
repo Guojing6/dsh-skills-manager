@@ -79,7 +79,7 @@ assert.equal(afterDelete.skills.find((item) => item.name === "kept-skill").categ
 assert.equal(await readFile(kept, "utf8"), before, "删除分类不搬文件");
 
 const stored = await readManagerState();
-assert.equal(stored.writable, true, "旧状态形状之外的分类字段不能把状态判坏");
+assert.equal(stored.writable, true, "分类写入后状态文件仍可写");
 
 const ghost = await createCategory("dsh", "幽灵");
 const missing = await assignSkillCategory("dsh", "no-such-skill", ghost.category.id);
