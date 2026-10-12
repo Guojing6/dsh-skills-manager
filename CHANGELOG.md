@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.17 - 2026-10-12
+
+- Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.
+
 [简体中文](CHANGELOG.zh-CN.md)
 
 ## 1.1.16 - 2026-10-12

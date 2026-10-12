@@ -27,8 +27,8 @@ assert.equal(hostCordisOverrides("0.1.7-rc.2")["@deepseek-ai/cordis-plugin-hmr"]
 assert.equal(hostCordisOverrides("0.2.0-rc.1")["@deepseek-ai/cordis-plugin-hmr"], "1.0.19");
 assert.equal(hostCordisOverrides("0.2.0-rc.2")["@deepseek-ai/cordis-plugin-hmr"], "1.0.19");
 assert.equal(developmentHost, "0.2.0-rc.2");
-assert.deepEqual(supportedHosts, ["0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2"]);
-assert.equal(supportedHosts.some((version) => version.includes("alpha")), false);
+assert.deepEqual(supportedHosts, ["0.1.2-rc.1", "0.1.5-rc.1", "0.1.5-rc.2", "0.1.5-rc.3", "0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.2"]);
+assert.equal(supportedHosts.some((version) => version.includes("0.1.6-alpha") || version.includes("0.1.7-alpha")), false);
 assert.deepEqual(parseOptions(["--keep"]).versions, supportedHosts);
 assert.equal(parseOptions(["--keep", supportedHosts[0]]).keep, true);
 assert.deepEqual(parseOptions([supportedHosts[0], "--keep"]).versions, [supportedHosts[0]]);
