@@ -41,7 +41,7 @@ import { createRepositoryManager } from "./repositories.js";
 import { installationSourceKey } from "./repository-updates.js";
 
 const name = "skills-manager";
-const inject = ["webServer", "webRuntime", "skills", "tools", "sessions"];
+const inject = ["webServer", "skills", "tools", "sessions"];
 const CLIENT_MARKER_HEADER = "x-dsh-skills-manager";
 const MAX_LOG_BYTES = 1 << 20;
 // 文件夹上传允许 64 MiB 原始内容；Base64 会膨胀约 1/3，再为最多 1000 条路径预留余量。
@@ -355,7 +355,21 @@ function apply(ctx: HostContext) {
   }), "skills-manager: plugin updater");
   const log = makeLog();
   const repositories = createRepositoryManager({ log, registeredWorkspaces: () => registeredWorkspacePaths(ctx) });
-  const trustedHosts = Array.isArray(ctx.webRuntime.trustedHosts) ? ctx.webRuntime.trustedHosts : [];
+  const getTrustedHosts = () => {
+    try {
+      const rawCtx = ctx as unknown as Record<string, unknown>;
+      // Cordis context proxy throws "cannot get property X without inject" on rawCtx.webRuntime or rawCtx.get
+      // Check root properties or safe get without throwing
+      const root = (rawCtx.root || rawCtx) as Record<string, unknown>;
+      const candidate = root.webRuntime || root.webStartup;
+      if (candidate && typeof candidate === "object" && Array.isArray((candidate as { trustedHosts?: unknown }).trustedHosts)) {
+        return (candidate as { trustedHosts: string[] }).trustedHosts;
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  };
   const roots = userRoots();
   const rootByKey = Object.fromEntries(roots.map((r) => [r.key, r]));
 
@@ -452,7 +466,7 @@ function apply(ctx: HostContext) {
       };
       const stateWithSources = async () => attachSources(await state(projectOptions()));
       try {
-        const hostError = validateRequestOrigin(req, trustedHosts);
+        const hostError = validateRequestOrigin(req, getTrustedHosts());
         if (hostError) {
           json(res, hostError.statusCode, { ok: false, code: hostError.code, error: hostError.error });
           return;
@@ -476,7 +490,7 @@ function apply(ctx: HostContext) {
           json(res, 405, { ok: false, code: "error.proto.method", error: `method not allowed: ${req.method}` });
           return;
         }
-        const requestError = validateMutationRequest(req, trustedHosts);
+        const requestError = validateMutationRequest(req, getTrustedHosts());
         if (requestError) {
           json(res, requestError.statusCode, { ok: false, code: requestError.code, error: requestError.error });
           return;
