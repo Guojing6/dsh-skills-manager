@@ -37,7 +37,11 @@ export function cordisPin(hostVersion) {
 
 export function hostCordisOverrides(hostVersion) {
   const cordis = cordisPin(hostVersion);
-  return { "@deepseek-ai/cordis": cordis, ...CORDIS_PLUGIN_PINS[cordis] };
+  const overrides = { "@deepseek-ai/cordis": cordis, ...CORDIS_PLUGIN_PINS[cordis] };
+  if (hostVersion === "0.2.1-alpha.2") {
+    overrides["@deepseek-ai/schemastery"] = "3.18.5-alpha.1";
+  }
+  return overrides;
 }
 
 // pnpm 的包名通配 override 不保证匹配传递依赖；在解析每个包时锁定官方依赖。
