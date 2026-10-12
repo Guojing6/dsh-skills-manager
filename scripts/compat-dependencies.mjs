@@ -5,6 +5,7 @@ const CORDIS_PINS = Object.freeze({
   "0.1.7-rc.2": "4.0.4",
   "0.2.0-rc.1": "4.0.4",
   "0.2.0-rc.2": "4.0.4",
+  "0.2.1-alpha.2": "4.0.5-alpha.1",
 });
 const CORDIS_PLUGIN_PINS = Object.freeze({
   "4.0.2": {
@@ -20,6 +21,13 @@ const CORDIS_PLUGIN_PINS = Object.freeze({
     "@deepseek-ai/cordis-plugin-include": "1.0.9",
     "@deepseek-ai/cordis-plugin-loader": "1.0.5",
     "@deepseek-ai/cordis-plugin-timer": "1.1.6",
+  },
+  "4.0.5-alpha.1": {
+    "@deepseek-ai/cordis-plugin-group": "1.0.4",
+    "@deepseek-ai/cordis-plugin-hmr": "1.0.19",
+    "@deepseek-ai/cordis-plugin-include": "1.0.10-alpha.1",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.6-alpha.1",
+    "@deepseek-ai/cordis-plugin-timer": "1.1.7-alpha.1",
   },
 });
 

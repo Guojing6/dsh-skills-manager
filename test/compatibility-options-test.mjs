@@ -20,6 +20,7 @@ assert.equal(cordisPin("0.1.7-rc.1"), "4.0.4");
 assert.equal(cordisPin("0.1.7-rc.2"), "4.0.4");
 assert.equal(cordisPin("0.2.0-rc.1"), "4.0.4");
 assert.equal(cordisPin("0.2.0-rc.2"), "4.0.4");
+assert.equal(cordisPin("0.2.1-alpha.2"), "4.0.5-alpha.1");
 assert.equal(hostCordisOverrides("0.1.1-rc.2")["@deepseek-ai/cordis-plugin-hmr"], "1.0.17");
 assert.equal(hostCordisOverrides("0.1.1-rc.2")["@deepseek-ai/cordis-plugin-timer"], "1.1.4");
 assert.equal(hostCordisOverrides("0.1.7-rc.1")["@deepseek-ai/cordis-plugin-hmr"], "1.0.19");
