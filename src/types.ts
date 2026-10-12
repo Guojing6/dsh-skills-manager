@@ -72,11 +72,18 @@ export interface Scan {
     entries: SkillEntry[];
     truncated?: boolean;
 }
+export interface SkillCategory {
+    id: string;
+    name: string;
+}
 export interface ManagerState {
     version: number;
     sources: Record<string, boolean>;
     disabledSkills: Record<string, string[]>;
     enabledSkills: Record<string, string[]>;
+    /** 每个来源自己的列表分类。旧状态文件可以没有这两个字段。 */
+    categories: Record<string, SkillCategory[]>;
+    categoryMembers: Record<string, Record<string, string>>;
 }
 export interface PolicyResult {
     state: ManagerState;
@@ -109,12 +116,14 @@ export interface SkillView extends Omit<SkillEntry, 'docPath' | 'entryPath' | 'r
         scope: string;
     };
     installSource?: InstallSource | null;
+    categoryId?: string | null;
 }
 export interface RootView extends SkillRoot {
     exists: boolean;
     truncated: boolean;
     enabled: boolean;
     skills: SkillView[];
+    categories: SkillCategory[];
 }
 export interface SkillItem {
     root: SkillRoot;

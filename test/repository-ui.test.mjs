@@ -1,5 +1,6 @@
 // 验证真实 hooks/事件的筛选、折叠、安装位置选择、回收站卸载和更新行为。
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { createRepositoryUI, repositoryLocales } from "../src/repository-ui.ts";
 import { createDestinationKit, destinationLocales } from "../src/destination-picker.ts";
 let values = [], cursor = 0, effects = [], dependencies = [];
@@ -54,10 +55,20 @@ const api = async (path, options) => {
 };
 const Input = Object.assign(() => {}, { TextArea: Symbol("官方只读说明框") });
 const Button = Symbol("官方按钮");
-const isAction = (node, key) => (node.type === "button" || node.type === Button) && node.children.includes(key);
+const isAction = (node, key) => (node.type === "button" || node.type === Button) && (node.children.includes(key) || node.props["aria-label"] === key);
 const OfficialSelect = Symbol("官方筛选");
 let hostLocale;
-const useUI = createRepositoryUI({ react, Modal: "modal", Input, Button, SourceSelect: OfficialSelect, destination: createDestinationKit({ react, SourceSelect: OfficialSelect, translateError: (_t, error) => error.error || error.message }), api, headers: {}, getLocale: () => hostLocale, translateError: (_t, e) => e.code === "error.repo.invalid" ? "已翻译的仓库错误" : e.error || e.message });
+const Collapse = (props) => {
+  const items = props.items || [];
+  const active = [].concat(props.activeKey ?? []);
+  return react.createElement("div", { className: props.className }, items.map((item) => {
+    const open = active.includes(item.key);
+    return react.createElement("div", { key: item.key },
+      react.createElement("button", { type: "button", "aria-expanded": open, onClick: () => props.onChange(open ? [] : [item.key]) }, item.label, item.extra),
+      open ? item.children : null);
+  }));
+};
+const useUI = createRepositoryUI({ react, Modal: "modal", Input, Button, Collapse, SourceSelect: OfficialSelect, destination: createDestinationKit({ react, SourceSelect: OfficialSelect, translateError: (_t, error) => error.error || error.message }), api, headers: {}, getLocale: () => hostLocale, translateError: (_t, e) => e.code === "error.repo.invalid" ? "已翻译的仓库错误" : e.error || e.message });
 let languagePrefix = "";
 const rootTranslations = { "root.codex": "Codex", "root.claude": "Claude", "root.windsurf-user": "Windsurf User" };
 const t = (key) => key === "format.locale" ? "zh-CN" : languagePrefix + (rootTranslations[key] || key);
@@ -66,7 +77,7 @@ function render() { cursor = 0; ui = useUI({ active: true, t, onInstalled: async
 // 目标选择器是函数组件：带 userDestinations 的节点展开成它渲染出的子树，其余沿用原遍历。
 function nodes(node) {
   if (!node || typeof node !== "object") return [];
-  if (typeof node.type === "function" && node.props && "userDestinations" in node.props) return nodes(node.type(node.props));
+  if (typeof node.type === "function" && node.props && ("userDestinations" in node.props || Array.isArray(node.props.items))) return nodes(node.type(node.props));
   return [node, ...node.children.flatMap(nodes)];
 }
 const all = () => [...nodes(ui.actions), ...nodes(ui.content)];
@@ -90,6 +101,11 @@ const checkedRoots = () => { const select = locationSelect(); return select && s
 const destinationLabels = () => locationSelect()?.props.options ?? [];
 const pathLines = () => modalNodes().filter(n => n.type === "code").map(n => n.children.join(""));
 
+const repoSource = await readFile(new URL("../src/repository-ui.ts", import.meta.url), "utf8");
+assert.equal(repoSource.includes('.dssm-repo-row:first-child{border-top:0}'), false, "仓库第一条技能必须保留标题下方分隔线");
+assert.equal(/\.dssm-repo-description\{[^}]*line-height:18px/.test(repoSource), true, "仓库描述行高与全局技能的 18px 一致");
+assert.equal(repoSource.includes("▾") || repoSource.includes("▸"), false, "仓库折叠不再用文字三角");
+assert.match(repoSource, /h\(Collapse,/, "仓库折叠使用和全局技能相同的 Collapse，带箭头和展开动画");
 assert.deepEqual(Object.keys(repositoryLocales.en).sort(), Object.keys(repositoryLocales.zh).sort(), "中英文词条必须同步");
 const allowedDestinationKeys = ["dsh", "agents"];
 for (const locale of Object.values(repositoryLocales)) {
@@ -112,9 +128,44 @@ render(); effects.splice(0).forEach((f) => f()); await settle();
 assert.equal(countCalls("/repositories"), 1, "进入仓库只读取一次列表");
 assert.equal(find(n => isAction(n, "repo.check")), undefined, "不再提供重复的检查更新按钮");
 assert.equal(find(n => n.props["aria-label"] === "repo.search").type, Input, "仓库搜索必须使用官方输入框");
+const toolbar = find(n => n.props.className === "dssm-filters");
+assert.ok(toolbar, "仓库筛选和搜索必须复用全局技能的同一个 dssm-filters 工具栏");
+assert.deepEqual(toolbar.children.map(n => n.props.className), ["dssm-source-filter", "dssm-status-filter", "dssm-search"], "左侧来源、状态紧凑筛选，右侧搜索；顺序和全局技能一致");
+assert.equal(toolbar.children[0].children[0].type, OfficialSelect);
+assert.equal(toolbar.children[0].children[0].props.label, "repo.all");
+assert.deepEqual(toolbar.children[0].children[0].props.options, [{ value: "", label: "repo.all" }, { value: "one", label: "example/skills" }]);
+assert.equal(toolbar.children[1].children[0].type, OfficialSelect);
+assert.equal(toolbar.children[1].children[0].props.label, "repo.states");
+assert.deepEqual(toolbar.children[1].children[0].props.options.map(o => o.value), ["", "available", "installed", "update", "conflict", "invalid"]);
+assert.equal(toolbar.children[2].type, Input);
+assert.equal(toolbar.children[2].props.allowClear, true, "保留搜索清空按钮");
+assert.equal(ui.content.children.some(n => n.props?.className === "dssm-search"), false, "搜索不再独占工具栏外的一行");
+const toolbarCss = all().filter(n => n.type === "style").map(n => n.children.join("")).join("");
+assert.doesNotMatch(toolbarCss, /\.dssm-repo-filters/, "删除旧仓库等宽筛选 CSS，而不是叠加覆盖");
+assert.doesNotMatch(toolbarCss, /\.dssm-(?:filters|source-filter|status-filter|search)(?=[\s.{:>])/, "工具栏布局直接继承全局 CSS，不复制仓库专用规则");
+// 原筛选与搜索事件保留：来源、状态和搜索可组合，且不会增加后端请求。
+const beforeFilterCalls = calls.length;
+find(n => n.props.label === "repo.all").props.onChange("missing"); render();
+assert.equal(find(n => n.props.className === "dssm-source"), undefined, "来源筛选仍过滤仓库");
+find(n => n.props.label === "repo.all").props.onChange("one"); render();
+find(n => n.props.label === "repo.states").props.onChange("conflict"); render();
+assert.deepEqual(all().filter(n => n.props.className === "dssm-name").map(n => n.children.join("")), ["docx"], "状态筛选仍自动展开匹配技能");
+find(n => n.props["aria-label"] === "repo.search").props.onChange({ target: { value: " PDF " } }); render();
+assert.equal(all().filter(n => n.props.className === "dssm-repo-row").length, 0, "搜索与状态筛选仍取交集");
+find(n => n.props["aria-label"] === "repo.search").props.onChange({ target: { value: "" } }); render();
+assert.equal(all().filter(n => n.props.className === "dssm-repo-row").length, 1, "清空搜索保留状态筛选");
+find(n => n.props.label === "repo.states").props.onChange(""); render();
+find(n => n.props.label === "repo.all").props.onChange(""); render();
+assert.equal(calls.length, beforeFilterCalls, "筛选和搜索仍为本地操作");
 assert.equal(find(n => n.props.className === "dssm-repo-row"), undefined, "默认折叠");
 find(n => n.props["aria-expanded"] === false).props.onClick(); render();
 assert.equal(all().filter(n => n.props.className === "dssm-repo-row").length, 2);
+assert.notEqual(rowAction("repo.install").props.type, "primary", "安装按钮不用蓝色主按钮");
+assert.ok(rowAction("repo.detail").props.icon && rowAction("repo.install").props.icon, "仓库行的详情和安装是图标");
+assert.equal(rowAction("repo.detail").children.includes("repo.detail"), false, "详情不显示文字");
+assert.equal(rowAction("repo.install").children.includes("repo.install"), false, "安装不显示文字");
+assert.equal(find(n => isAction(n, "repo.add")).props.type, "primary", "添加仓库恢复蓝色主按钮");
+assert.doesNotMatch(all().filter(n => n.type === "style").map(n => n.children.join("")).join(""), /\.dssm-repo-emphasis/, "主按钮不再套灰描边");
 assert.ok(rowAction("repo.conflict").props.disabled, "未跟踪的同名冲突不能卸载");
 assert.equal(rowAction("repo.uninstall"), undefined);
 // 服务端对每个技能都会返回 installations 数组；本地有同名技能但没有安装记录时是空数组，
@@ -193,8 +244,19 @@ assert.equal(countCalls("/repositories"), beforeInstallList + 1, "安装完成�
 assert.equal(installedCalls, 1, "安装完成刷新宿主列表");
 assert.equal(dialog(), undefined);
 assert.equal(rowAction("repo.installed"), undefined, "可卸载副本不再显示禁用 Installed");
-assert.ok(rowAction("repo.uninstall").props.danger, "卸载按钮为红色 danger");
+assert.ok(rowAction("repo.uninstall").props.icon, "已安装副本的卸载是图标，不是红框文字按钮");
+assert.equal(rowAction("repo.uninstall").props.danger, true, "卸载图标使用红色垃圾桶，和回收站删除一致");
+assert.match(String(rowAction("repo.uninstall").props.style.color), /state-error-primary/, "卸载图标颜色不能被次级灰覆盖");
+assert.equal(rowAction("repo.detail").props.danger, undefined, "详情图标保持次级色");
+assert.equal(rowAction("repo.uninstall").children.includes("repo.uninstall"), false, "卸载不显示文字");
 assert.equal(rowAction("repo.uninstall").props.disabled, false);
+const singleCopyRow = all().find(n => n.props.className === "dssm-repo-row" && nodes(n).some(c => isAction(c, "repo.uninstall")));
+const singleCopyActions = nodes(singleCopyRow).find(n => n.props.className === "dssm-repo-actions");
+assert.ok(singleCopyActions, "单副本的详情、添加安装和卸载必须共用行内操作区");
+for (const key of ["repo.detail", "repo.installElsewhere", "repo.uninstall"]) {
+  assert.ok(nodes(singleCopyActions).some(n => isAction(n, key)), key + " 必须在同一操作区，不能掉到安装位置下一行");
+}
+assert.equal(nodes(singleCopyRow).some(n => n.props.className === "dssm-repo-copies"), false, "单副本不再渲染单独的安装位置操作行");
 assert.ok(find(n => n.props.className === "dssm-repo-main").children.some(n => n.props?.role === "status" && n.children.join("").includes("repo.installSuccess")), "成功结果留在当前行");
 languagePrefix = "en:"; render();
 assert.ok(find(n => n.props.role === "status" && n.children.includes("en:repo.installSuccess")), "切换语言后已完成提示重新翻译");
@@ -217,7 +279,8 @@ await clickNode(uninstallConfirm);
 uninstallConfirm.props.onClick(); await settle();
 assert.equal(countCalls("/repositories/uninstall"), 1, "双击确认只卸载一次");
 assert.equal(ui.content.props["aria-busy"], true);
-assert.ok(rowAction("repo.uninstalling").props.disabled && rowAction("repo.uninstalling").props.danger);
+assert.ok(rowAction("repo.uninstalling").props.disabled && rowAction("repo.uninstalling").props.icon, "卸载中仍是禁用图标");
+assert.equal(rowAction("repo.uninstalling").props.danger, true, "卸载中的垃圾桶也保持红色");
 assert.ok(modalAction("repo.uninstalling").props.disabled);
 assert.ok(modalNodes().some(n => n.props.role === "status" && n.children.includes("repo.uninstallProgress")));
 dialog().props.onClose(); render(); assert.ok(dialog(), "卸载期间不能关闭弹窗");
@@ -399,10 +462,13 @@ Object.assign(repos[0].skills[0], { name: "pdf", status: "update", installedRoot
 await click("repo.refresh");
 const copies = () => all().filter(n => n.props.className === "dssm-repo-copy");
 assert.equal(copies().length, 5, "必须展示每个安装副本，不只取第一条");
+const installedRow = all().find(n => n.props.className === "dssm-repo-row" && nodes(n).some(c => c.props.className === "dssm-repo-copy"));
+assert.equal(nodes(installedRow).find(n => n.props.className === "dssm-repo-main").children.some(n => n?.props?.className === "dssm-repo-copies"), false, "已安装位置不塞进文字列，才能和右侧图标对齐");
 const copyCss = all().filter(n => n.type === "style").map(n => n.children.join("")).join("");
-assert.match(copyCss, /\.dssm-repo-copy\{[^}]*border:1px solid var\(--dsw-alias-border-l2/, "副本容器沿用宿主主题边框");
-assert.match(copyCss, /\.dssm-repo-copy\{[^}]*background:var\(--dsw-alias-bg-layer-1/, "副本容器沿用宿主主题背景");
-assert.match(copyCss, /\.dssm-repo-copy-actions\{[^}]*flex-wrap:wrap/, "独立按钮在窄容器可换行");
+assert.doesNotMatch(copyCss, /\.dssm-repo-copy\{[^}]*border:1px/, "已安装副本不再套一层卡片边框");
+assert.match(copyCss, /\.dssm-repo-copy\{[^}]*background:transparent/, "已安装副本透出技能行底色");
+assert.match(copyCss, /\.dssm-repo-row\{[^}]*flex-direction:column/, "技能行分成标题区和安装位置行");
+assert.match(copyCss, /\.dssm-repo-copy-actions\{[^}]*margin-left:auto/, "卸载图标贴齐行右缘");
 for (const node of copies().slice(0, 4)) {
   for (const action of ["repo.review", "repo.rollback", "repo.uninstall"]) assert.equal(nodes(node).find(n => isAction(n, action)).props.disabled, false, "每个目标都有独立按钮");
 }

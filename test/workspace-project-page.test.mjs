@@ -1,6 +1,12 @@
-// 项目页按已登记工作区折叠展示：不依赖当前会话，展开才取技能，操作带上所选工作区。
+// 项目页顶部选择已登记工作区：只读取所选项，来源与技能复用全局绘制及显式工作区操作。
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+
+const projectCss = await readFile(new URL("../src/client.ts", import.meta.url), "utf8");
+function assertSourceCleanup() {
+  assert.doesNotMatch(projectCss, /dssm-workspace|renderWorkspace|project\.searchHint/, "删除旧工作区折叠渲染、CSS和展开搜索提示");
+  assert.match(projectCss, /\.dssm-source\.ant-collapse\{[^}]*background:transparent/, "复用全局来源卡片背景");
+}
 
 let definition, component, cursor = 0, state = [];
 const effects = [], outerState = [];
@@ -37,8 +43,8 @@ const details = {
   ] },
 };
 const calls = [];
-let holdDetails = false;
-const detailResponses = [];
+let holdDetails = false, holdLists = false;
+const detailResponses = [], listResponses = [];
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (url, options = {}) => {
   const body = options.body ? JSON.parse(options.body) : undefined;
@@ -46,7 +52,10 @@ globalThis.fetch = async (url, options = {}) => {
   const path = String(url).replace("/api/dsh-skills-manager", "");
   let data;
   if (path === "/state") data = globalData;
-  else if (path === "/workspaces") data = { items: workspaces };
+  else if (path === "/workspaces") {
+    if (holdLists) return new Promise(resolve => listResponses.push({ resolve }));
+    data = { items: workspaces.slice() };
+  }
   else if (path === "/workspace-skills") {
     if (holdDetails) return new Promise(resolve => detailResponses.push({ workspace: body.workspace, resolve }));
     if (body.workspace === "D:/work/ghost") return { ok: false, status: 400, json: async () => ({ ok: false, code: "error.workspace.unavailable", error: "工作区目录不可用", params: { path: body.workspace } }) };
@@ -81,7 +90,7 @@ try {
   }
   function nodes(node = tree) {
     if (!node || typeof node !== "object" || Array.isArray(node)) return [];
-    if (typeof node.type === "function" && Array.isArray(node.props?.options) && node.props.label && node.props.onChange) return [{ type: "select-fixture", props: { "aria-label": node.props.label, options: node.props.options, onChange: (event) => node.props.onChange(event.target.value) }, children: [] }];
+    if (typeof node.type === "function" && Array.isArray(node.props?.options) && node.props.label && node.props.onChange) return [{ type: "select-fixture", props: { "aria-label": node.props.label, value: node.props.value, disabled: node.props.disabled, options: node.props.options, onChange: (event) => node.props.onChange(event.target.value) }, children: [] }];
     if (node.type?.name === "SkillSwitch" || node.props?.closeLabel || (typeof node.type === "function" && node.props && "on" in node.props && typeof node.props.label === "string")) return nodes(node.type({ ...node.props, children: node.children }));
     // 目标选择器是普通函数组件：渲染出它的子树，才能断言其中的控件。
     if (typeof node.type === "function" && node.props && "userDestinations" in node.props) return nodes(node.type(node.props));
@@ -100,79 +109,67 @@ try {
     const option = tabs.props.options.find((item) => item.label === name || (Array.isArray(item.label) && item.label.includes(name)));
     tabs.props.onChange(option.value); await settle();
   };
-  const workspaceGroups = () => nodes().filter((node) => node.props.className === "dssm-workspace" && Array.isArray(node.props.items));
-  const open = async (group) => { group.props.onChange([group.props.items[0].key]); await settle(); };
+  const workspaceGroups = () => nodes().filter((node) => node.props.className === "dssm-workspace");
+  const picker = () => find(node => node.props["aria-label"] === t("filter.workspace"));
+  const choose = async (path) => { picker().props.onChange({ target: { value: path } }); await settle(); };
   const textOf = (node) => JSON.stringify(nodes(node).flatMap((n) => n.children.filter((c) => typeof c === "string")));
 
   await settle();
   await tab("项目技能");
 
-  // 1. 不管当前会话有没有，都列出全部登记工作区；默认折叠，只有名称、路径、数量。
+  // 默认只读选择首个可用登记项，不依赖当前会话，不扫其他项目。
   assert.equal(currentSession, undefined);
-  let groups = workspaceGroups();
-  assert.equal(groups.length, 3, "按登记列表逐个工作区一行，没有当前会话也一样");
-  assert.deepEqual(rows(), [], "折叠时不平铺技能");
-  assert.ok(textOf(groups[0]).includes("alpha") && textOf(groups[0]).includes("D:/work/alpha"), "折叠行显示名称与路径");
-  assert.ok(textOf(groups[0]).includes("2 个技能"), "折叠行显示数量");
-  assert.equal(calls.some((c) => c.url.endsWith("/workspace-skills")), false, "折叠时不扫描项目");
-  assert.equal(find((node) => node.children.includes(t("project.empty"))), undefined, "不再有「当前会话没有工作区」空状态");
-  // 项目页的汇总靠扫描全部工作区才能得出，折叠时没有数据；不能显示恒为 0 的全局统计与来源筛选。
-  assert.equal(find((node) => node.props.className === "dssm-summary"), undefined, "项目页不显示全局统计卡");
-  assert.equal(find((node) => node.props.className === "dssm-source-filter"), undefined, "项目页不显示全局来源筛选");
-  assert.ok(find((node) => node.props.className === "dssm-status-filter") && find((node) => node.props.className === "dssm-search"), "项目页保留状态筛选与搜索框");
-  assert.ok(find((node) => node.props.className === "dssm-note" && node.children.includes(t("project.searchHint"))), "搜索框旁说明：只搜已展开的工作区");
-
-  // 2. 失效路径标出来，且不可展开取数。
-  assert.ok(textOf(groups[2]).includes(t("workspace.unavailable")), "不可用路径带标记");
-
-  // 3. 展开：只请求这个工作区，带登记路径；返回的来源与技能显示出来。
-  await open(groups[0]);
-  const scans = calls.filter((c) => c.url.endsWith("/workspace-skills"));
+  assert.ok(picker(), "顶部有工作区下拉");
+  assert.equal(workspaceGroups().length, 0, "不再有外层工作区折叠");
+  assert.deepEqual(picker().props.options.map(o => o.value), workspaces.map(w => w.registeredPaths[0]), "包括空工作区和不可用工作区");
+  assert.equal(picker().props.options.find(o => o.value === "D:/work/ghost").disabled, true);
+  assert.ok(picker().props.options.find(o => o.value === "D:/work/ghost").label.includes(t("workspace.unavailable")));
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"]);
+  const scans = calls.filter(c => c.url.endsWith("/workspace-skills"));
   assert.equal(scans.length, 1);
-  assert.deepEqual(scans[0].body, { workspace: "D:/work/alpha/packages/web" }, "请求带的是第一个登记路径，不是推导出来的项目根");
-  assert.deepEqual(rows(), ["alpha-one", "alpha-two"], "展开后显示该项目的全部来源技能");
-  assert.equal(rows().includes("beta-one"), false);
-  assert.equal(calls.filter((c) => c.url.endsWith("/workspace-skills")).length, 1, "只扫描展开的那一个");
+  assert.deepEqual(scans[0].body, { workspace: "D:/work/alpha/packages/web" }, "只请求登记路径，不推导项目根");
+  assert.equal(find(node => node.props.className === "dssm-summary"), undefined);
+  assert.equal(find(node => node.props.className === "dssm-source-filter"), undefined);
+  const controls = nodes(find(node => node.props.className === "dssm-filters"));
+  assert.deepEqual(controls.filter(node => [t("filter.status"), t("filter.workspace"), t("search")].includes(node.props["aria-label"])).map(node => node.props["aria-label"]), [t("filter.status"), t("filter.workspace"), t("search")]);
+  await choose("D:/work/ghost");
+  await choose("D:/unregistered");
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"], "合成事件也不能选择不可用或未登记项");
+  assert.equal(calls.filter(c => c.url.endsWith("/workspace-skills")).length, 1);
+  await choose("D:/work/beta");
+  assert.deepEqual(rows(), [], "切换空工作区不泄漏 alpha 技能");
+  assert.ok(find(node => node.children.includes(t("workspace.noSkills"))));
+  await choose("D:/work/alpha/packages/web");
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"]);
+  assert.equal(calls.filter(c => c.url.endsWith("/workspace-skills")).length, 2, "切回已缓存工作区不重复扫描");
 
-  // 4. 重新收起再展开不重复请求（已有缓存），刷新才重新取。
-  groups = workspaceGroups(); groups[0].props.onChange([]); await settle();
-  assert.deepEqual(rows(), []);
-  await open(workspaceGroups()[0]);
-  assert.equal(calls.filter((c) => c.url.endsWith("/workspace-skills")).length, 1, "展开缓存不重复扫描");
-
-  // 刷新已展开的项目：重新取详情，不清缓存后永远停在 loading。
+  // 刷新只重读所选项目，不清缓存后永远停在 loading。
   const beforeRefresh = calls.filter(c => c.url.endsWith("/workspace-skills")).length;
   details["D:/work/alpha"].roots[0].skills.push(skill("alpha-new"));
   find(node => node.children.includes(t("btn.refresh")) && node.props.onClick).props.onClick();
   await settle();
-  assert.equal(calls.filter(c => c.url.endsWith("/workspace-skills")).length, beforeRefresh + 1, "刷新重新读取已展开的工作区");
-  assert.ok(rows().includes("alpha-new"), "刷新后展开行显示新详情");
-  assert.ok(workspaceGroups()[0].props.activeKey.length, "保持展开状态");
+  assert.equal(calls.filter(c => c.url.endsWith("/workspace-skills")).length, beforeRefresh + 1, "刷新重新读取所选工作区");
+  assert.ok(rows().includes("alpha-new"), "刷新后所选项显示新详情");
+  assert.deepEqual(rows().slice(0, 2), ["alpha-one", "alpha-new"], "刷新保持所选工作区");
   details["D:/work/alpha"].roots[0].skills.pop();
 
-  // 5. 空项目展开显示空提示，不报错。
-  await open(workspaceGroups()[1]);
-  assert.ok(find((node) => node.props.className === "dssm-empty" && node.children.includes(t("workspace.noSkills"))), "没有技能时给出空提示");
-
-  // 连续刷新：最新响应获胜；旧失败不能覆盖新成功，展开保持 loading/error 可见。
+  // 5. 连续刷新：只读所选工作区，最新响应获胜；旧失败不能覆盖新成功。
   holdDetails = true;
   const refreshProjects = async () => { find(node => node.children.includes(t("btn.refresh")) && node.props.onClick).props.onClick(); await settle(); };
   await refreshProjects();
-  assert.ok(find(node => node.children.includes(t("workspace.loading"))), "刷新时展开项目有 loading 提示");
-  assert.equal(detailResponses.length, 2, "两个已展开项目都重读");
+  assert.ok(find(node => node.children.includes(t("workspace.loading"))), "刷新时所选项目有 loading 提示");
+  assert.equal(detailResponses.length, 1, "只重读所选工作区");
   await refreshProjects();
-  assert.equal(detailResponses.length, 4, "再次刷新为两个项目发起新请求");
+  assert.equal(detailResponses.length, 2, "再次刷新发起新请求");
   const response = (roots) => ({ ok: true, json: async () => ({ ok: true, data: { roots } }) });
-  detailResponses[2].resolve(response(details["D:/work/alpha"].roots));
-  detailResponses[3].resolve(response(details["D:/work/beta"].roots));
+  detailResponses[1].resolve(response(details["D:/work/alpha"].roots));
   await settle();
   assert.ok(rows().includes("alpha-one"), "最新详情返回后正常显示");
-  for (const stale of detailResponses.slice(0, 2)) stale.resolve({ ok: false, status: 400, json: async () => ({ ok: false, error: "stale failure" }) });
+  detailResponses[0].resolve({ ok: false, status: 400, json: async () => ({ ok: false, error: "stale failure" }) });
   await settle();
   assert.equal(find(node => JSON.stringify(node.children).includes("stale failure")), undefined, "过期错误不能覆盖最新成功");
   await refreshProjects();
-  detailResponses[4].resolve({ ok: false, status: 400, json: async () => ({ ok: false, error: "fresh failure" }) });
-  detailResponses[5].resolve(response(details["D:/work/beta"].roots));
+  detailResponses[2].resolve({ ok: false, status: 400, json: async () => ({ ok: false, error: "fresh failure" }) });
   await settle();
   assert.ok(find(node => node.props.role === "alert" && JSON.stringify(node.children).includes("fresh failure")), "最新错误可见且不永远 loading");
   holdDetails = false;
@@ -204,10 +201,8 @@ try {
   alphaClaude.fallbackTo = { root: "dsh", name: "alpha-two", scope: "user" };
   await settle();
   details["D:/work/alpha"].roots.find((r) => r.kind === "project-claude").skills[0] = alphaClaude;
-  workspaceGroups()[0].props.onChange([]); await settle();
   // 重新读取以拿到被修改后的详情
-  await tab("全局技能"); await tab("项目技能");
-  await open(workspaceGroups()[0]);
+  await refreshProjects();
   const fallbackNote = find((node) => node.props.className === "dssm-note dssm-fallback");
   assert.ok(fallbackNote, "项目停用行显示接管来源");
   assert.ok(String(fallbackNote.children[0]).startsWith("当前使用全局 ") && String(fallbackNote.children[0]).endsWith(" 副本。"), "文案来自翻译，指向用户级来源");
@@ -222,7 +217,7 @@ try {
   assert.equal(feedback(), undefined, "回收站不显示项目页的操作结果");
   await tab("项目技能");
 
-  // 8. 搜索：命中技能的工作区自动展开，其余只剩名称匹配的。
+  // 8. 搜索只筛选所选工作区的技能。
   const search = find((node) => node.props["aria-label"] === t("search"));
   search.props.onChange({ target: { value: "alpha-two" } }); await settle();
   assert.deepEqual(rows(), ["alpha-two"], "搜索只留命中的技能");
@@ -235,6 +230,7 @@ try {
     { id: "trash-user", name: "removed-user", deletedAt: "2026-09-12T00:00:00Z", root: { scope: "user" } },
   ];
   await tab("项目技能"); await tab("回收站");
+  assert.equal(nodes().some((node) => node.children.some((child) => typeof child === "string" && child.includes("待处理技能"))), false, "回收站列表不再重复待处理数量，页签徽标已经显示数量");
   // 回收站条目有独立容器与信息层级，操作区成组，不改变恢复请求的授权范围。
   const trashCards = nodes().filter((node) => node.props.className === "dssm-trash-item");
   assert.equal(trashCards.length, 3);
@@ -247,27 +243,123 @@ try {
   assert.ok(nodes(trashMeta).some((node) => node.props.className === "dssm-trash-source"), "来源单独显示为次级标签");
   const trashActions = nodes(trashCards[0]).find((node) => node.props.className === "dssm-trash-actions");
   assert.ok(trashActions, "恢复与删除集中在独立操作区");
-  assert.equal(nodes(trashActions).filter((node) => node.children.includes(t("btn.restore"))).length, 1);
-  assert.equal(nodes(trashActions).filter((node) => node.props.danger === true).length, 1, "永久删除保持危险操作样式");
+  const restoreIcon = nodes(trashActions).find((node) => node.props["aria-label"] === t("btn.restore"));
+  const deleteIcon = nodes(trashActions).find((node) => node.props["aria-label"] === t("btn.delete.forever"));
+  assert.ok(restoreIcon && deleteIcon, "回收站行操作统一为带可访问标签的图标按钮");
+  for (const button of [restoreIcon, deleteIcon]) {
+    assert.equal(button.props.type, "text", "行内图标没有描边文字按钮底色");
+    assert.equal(button.props.size, "small");
+    assert.ok(button.props.icon, "复用 16px 描边图标");
+    assert.equal(button.props.style.width, 22, "操作盒与全局技能图标一致");
+    assert.equal(button.props.title, button.props["aria-label"], "悬停与无障碍名称保留原动作说明");
+    assert.equal(button.children.length, 0, "行内不再绘制文字按钮");
+  }
+  assert.equal(deleteIcon.props.danger, true, "永久删除保留危险图标语义");
   const css = nodes().filter((node) => node.type === "style").map((node) => node.children.join("")).join("");
   assert.match(css, /\.dssm-trash-item\{[^}]*border:1px solid var\(--dsw-alias-border-l2/, "回收站条目有宿主主题细边框");
-  assert.match(css, /\.dssm-trash-item\{[^}]*background:var\(--dsw-alias-bg-layer-1/, "回收站条目有主题背景层次，不硬编码白色");
+  assert.match(css, /\.dssm-trash-item\{[^}]*background:transparent/, "回收站和全局技能一样使用透明背景");
+  assert.match(css, /\.dssm-trash-item\{[^}]*padding:11px 13px/, "回收站留白与技能行一致");
+  assert.match(css, /\.dssm-trash-source\{[^}]*background:transparent/, "来源信息不再另铺偏亮的标签底色");
   assert.match(css, /\.dssm-trash-meta\{[^}]*color:var\(--dsw-alias-label-tertiary/, "时间等次级信息降低亮度");
   assert.match(css, /@container\(max-width:520px\)\{\.dssm-trash-item\{grid-template-columns:minmax\(0,1fr\)\}/, "窄面板操作区换行");
-  const restoreButtons = () => nodes().filter((node) => node.children.includes(t("btn.restore")));
+  const restoreButtons = () => nodes().filter((node) => node.props["aria-label"] === t("btn.restore"));
   assert.equal(restoreButtons().length, 3);
   const callsBefore = calls.length;
   restoreButtons()[0].props.onClick(); await tick(); await tick(); render();
   const restoreProj = calls.slice(callsBefore).find((c) => c.url.endsWith("/trash-restore"));
   assert.deepEqual(restoreProj.body, { id: "trash-proj", workspace: "D:/work/alpha/packages/web" }, "项目条目带原项目的登记路径");
   const afterFirst = calls.length;
-  nodes().filter((node) => node.children.includes(t("btn.restore")))[1].props.onClick(); await tick(); await tick(); render();
+  restoreButtons()[1].props.onClick(); await tick(); await tick(); render();
   const restoreOrphan = calls.slice(afterFirst).find((c) => c.url.endsWith("/trash-restore"));
   assert.deepEqual(restoreOrphan.body, { id: "trash-orphan" }, "找不到登记路径时不编造 workspace，交给服务端按当前会话判断并报错");
   const afterSecond = calls.length;
-  nodes().filter((node) => node.children.includes(t("btn.restore")))[2].props.onClick(); await tick(); await tick(); render();
+  restoreButtons()[2].props.onClick(); await tick(); await tick(); render();
   const restoreUser = calls.slice(afterSecond).find((c) => c.url.endsWith("/trash-restore"));
   assert.deepEqual(restoreUser.body, { id: "trash-user" }, "用户级条目不带 workspace");
+
+  // 切换工作区时只显示自己的缓存/加载态，旧 alpha 响应不能盖过 beta。
+  await tab("项目技能");
+  holdDetails = true;
+  const raceStart = detailResponses.length;
+  await refreshProjects();
+  await choose("D:/work/beta");
+  assert.deepEqual(rows(), []);
+  assert.ok(find(node => node.children.includes(t("workspace.loading"))));
+  assert.equal(detailResponses.length, raceStart + 2);
+  detailResponses[raceStart + 1].resolve(response([{ ...details["D:/work/beta"].roots[0], skills: [skill("beta-one")] }]));
+  await settle();
+  assert.deepEqual(rows(), ["beta-one"]);
+  detailResponses[raceStart].resolve(response(details["D:/work/alpha"].roots));
+  await settle();
+  assert.deepEqual(rows(), ["beta-one"], "旧工作区响应只写自己的缓存");
+  find(node => node.props["aria-label"] === t("search")).props.onChange({ target: { value: "alpha-one" } });
+  await settle();
+  assert.deepEqual(rows(), [], "搜索不会读未选中的 alpha 缓存");
+  assert.ok(find(node => node.children.includes(t("empty.search"))));
+  find(node => node.props["aria-label"] === t("search")).props.onChange({ target: { value: "" } });
+  await settle();
+  await tab("全局技能"); await tab("项目技能");
+  assert.equal(picker().props.value, "D:/work/beta", "重读列表保留当前选择");
+  await choose("D:/work/alpha/packages/web");
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"]);
+  holdDetails = false;
+
+  // 刷新列表进行中打开写入弹窗：新列表请求接管后也不能让项目页卡在 loading。
+  await tab("项目技能");
+  holdLists = true;
+  const pendingStart = listResponses.length;
+  await refreshProjects();
+  find(node => node.children.includes(t("btn.create")) && node.props.onClick).props.onClick();
+  await settle();
+  assert.equal(listResponses.length, pendingStart + 2);
+  listResponses[pendingStart + 1].resolve({ ok: true, json: async () => ({ ok: true, data: { items: workspaces.slice() } }) });
+  await settle();
+  find(node => node.children.includes(t("btn.cancel")) && node.props.onClick).props.onClick();
+  await settle();
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"], "写入弹窗列表接管刷新后仍加载当前所选工作区");
+  listResponses[pendingStart].resolve({ ok: false, status: 500, json: async () => ({ ok: false, error: "stale list failure" }) });
+  await settle();
+  assert.equal(find(node => node.props.role === "alert" && textOf(node).includes("stale list failure")), undefined);
+  holdLists = false;
+
+  // 重名用登记路径区分；失效/删除回落可用项，不请求失效路径。
+  const originalWorkspaces = workspaces.slice();
+  workspaces.push({ name: "alpha", path: "D:/work/other", registeredPaths: ["D:/work/other"], available: false, skillCount: 0 });
+  await refreshProjects();
+  assert.ok(picker().props.options.filter(option => option.label.startsWith("alpha")).every(option => option.label.includes(option.value)), "重名选项附登记路径");
+  const beforeInvalid = calls.filter(call => call.url.endsWith("/workspace-skills")).length;
+  workspaces[0] = { ...workspaces[0], available: false };
+  await refreshProjects();
+  assert.equal(picker().props.value, "D:/work/beta");
+  assert.equal(calls.filter(call => call.url.endsWith("/workspace-skills")).length, beforeInvalid + 1, "只读回落后的可用项");
+  assert.deepEqual(calls.filter(call => call.url.endsWith("/workspace-skills")).at(-1).body, { workspace: "D:/work/beta" });
+  workspaces.splice(0, workspaces.length, originalWorkspaces[2]);
+  const beforeNoUsable = calls.filter(call => call.url.endsWith("/workspace-skills")).length;
+  await refreshProjects();
+  assert.equal(picker().props.value, "");
+  assert.ok(find(node => node.children.includes(t("workspace.unavailable"))));
+  assert.equal(calls.filter(call => call.url.endsWith("/workspace-skills")).length, beforeNoUsable);
+  workspaces.length = 0;
+  await refreshProjects();
+  assert.equal(picker().props.value, "");
+  assert.ok(find(node => node.children.includes(t("project.empty"))));
+  assert.deepEqual(rows(), []);
+  workspaces.push(...originalWorkspaces);
+  await refreshProjects();
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"], "列表恢复后重新选择首个可用项");
+
+  // 连续刷新列表也采用最新响应，旧成功不能把被删除的选择复活。
+  holdLists = true;
+  const listRaceStart = listResponses.length;
+  await refreshProjects(); await refreshProjects();
+  listResponses[listRaceStart + 1].resolve({ ok: true, json: async () => ({ ok: true, data: { items: [] } }) });
+  await settle();
+  listResponses[listRaceStart].resolve({ ok: true, json: async () => ({ ok: true, data: { items: originalWorkspaces } }) });
+  await settle();
+  assert.deepEqual(picker().props.options, [], "旧列表响应不能复活删除的工作区");
+  assert.deepEqual(rows(), []);
+  holdLists = false;
+  await refreshProjects();
 
   // 9. 全局页不受影响，仍是用户级来源。
   await tab("全局技能");
@@ -277,11 +369,15 @@ try {
   // 10. 登记列表读取失败：项目页提示，不抛错、不回退到当前会话。
   const previous = globalThis.fetch;
   globalThis.fetch = async (url, options) => String(url).endsWith("/workspaces") ? { ok: false, status: 500, json: async () => ({ ok: false, error: "boom" }) } : previous(url, options);
-  outerState.length = 0; innerState = []; mountedKey = undefined;
-  await settle(); await tab("项目技能");
+  await tab("项目技能");
   assert.equal(workspaceGroups().length, 0);
   assert.ok(find((node) => node.props.className === "dssm-empty" || String(node.props.className || "").includes("dssm-error")), "失败时有明确提示");
+  assert.equal(picker().props.value, "", "列表失败清空选择，不使用当前 session 或旧选择");
+  assert.deepEqual(rows(), []);
   globalThis.fetch = previous;
+  await refreshProjects();
+  assert.deepEqual(rows(), ["alpha-one", "alpha-two"], "列表失败后可刷新恢复");
 
-  console.log("项目页：按登记工作区折叠、展开才取数、带工作区操作、搜索与失败处理均通过");
+  assertSourceCleanup();
+  console.log("项目页：顶部工作区选择、所选项取数、带工作区操作、搜索与失败处理均通过");
 } finally { globalThis.fetch = originalFetch; }

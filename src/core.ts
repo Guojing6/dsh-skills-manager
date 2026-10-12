@@ -1,4 +1,4 @@
-import type { SkillRoot, RepositoryDestination, RootInput, Diagnostic, OperationError, CodedError, Log, DiscoveredEntry, SkillEntry, ParsedSkill, Scan, ManagerState, PolicyResult, Policy, SkillItem, ViewItem, RootView, SkillView, ScopeOptions, MutationOptions, RenameOptions, UploadInput, CreateInput, ImportCandidate, ImportPending, ImportConflict, ImportFailure, ImportResult } from "./types.js";
+import type { SkillRoot, RepositoryDestination, RootInput, Diagnostic, OperationError, CodedError, Log, DiscoveredEntry, SkillEntry, ParsedSkill, Scan, ManagerState, SkillCategory, PolicyResult, Policy, SkillItem, ViewItem, RootView, SkillView, ScopeOptions, MutationOptions, RenameOptions, UploadInput, CreateInput, ImportCandidate, ImportPending, ImportConflict, ImportFailure, ImportResult } from "./types.js";
 // dsh-skills-manager core —— 纯 Node 技能文件管理核心（仅 ZIP 解压使用 fflate，可独立单测）
 //
 // 覆盖 DSH 用户级与活动 Session 项目级技能根：
@@ -13,6 +13,7 @@ import type { SkillRoot, RepositoryDestination, RootInput, Diagnostic, Operation
 // 文件写入错误由路由返回给调用方。
 
 import { homedir } from "node:os";
+import { randomBytes } from "node:crypto";
 import {
   join,
   basename,
@@ -32,14 +33,14 @@ import {
 
 const KEBAB_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 // 项目来源集中定义，路径校验、策略身份和展示共用，避免新增目录只可见却不可加载。
-// 两种作用域共用 Agent 顺序；兼容目录紧跟主目录，通用项目目录最后补充。
+// 两种作用域共用 Agent 顺序；兼容目录紧跟主目录，不扫描项目根的普通资源目录。
 const EXTERNAL_SOURCE_ORDER = [
   "ccswitch", "codex", "claude", "gemini", "opencode", "cursor", "copilot",
   "windsurf", "windsurf-user", "trae", "trae-cn", "openclaw", "clawdbot",
-  "roo", "codebuddy", "workbuddy", "qoder", "qoder-cn", "lingma", "projectSkills",
+  "roo", "codebuddy", "workbuddy", "qoder", "qoder-cn", "lingma",
 ];
 function rankSources<T extends {key: string; native?: boolean; rank?: number; localeKey?: string}>(sources: T[], startRank: number) {
-  const order = (root: T) => EXTERNAL_SOURCE_ORDER.indexOf(root.localeKey === "projectSkills" ? "projectSkills" : root.key);
+  const order = (root: T) => EXTERNAL_SOURCE_ORDER.indexOf(root.key);
   const external = sources.filter((root) => !root.native);
   // 先逐项校验；单元素数组不会调用 sort 比较器，也不能漏过未登记来源。
   for (const root of external) {
@@ -63,8 +64,6 @@ const PROJECT_SOURCES = rankSources([
   { key: "windsurf", directory: ".windsurf", localeKey: "windsurf", label: "Windsurf" },
   { key: "trae", directory: ".trae", localeKey: "trae", label: "Trae" },
   { key: "trae-cn", directory: ".trae-cn", localeKey: "traeCn", label: "Trae CN" },
-  // 保留 project-openclaw:<hash> 策略键兼容已有设置；此项扫描通用 <project>/skills，并非 OpenClaw 专属目录。
-  { key: "openclaw", directory: "", localeKey: "projectSkills", label: "Project Skills" },
   { key: "roo", directory: ".roo", localeKey: "roo", label: "Roo" },
   { key: "codebuddy", directory: ".codebuddy", localeKey: "codebuddy", label: "CodeBuddy" },
   { key: "workbuddy", directory: ".workbuddy", localeKey: "workbuddy", label: "WorkBuddy" },
@@ -1356,7 +1355,7 @@ function defaultManagerState(): ManagerState {
     disabledSkills[root.key] = [];
     enabledSkills[root.key] = [];
   }
-  return { version: 1, sources, disabledSkills, enabledSkills };
+  return { version: 1, sources, disabledSkills, enabledSkills, categories: Object.create(null), categoryMembers: Object.create(null) };
 }
 
 function validStateSkillName(name: unknown): name is string {
@@ -1492,7 +1491,49 @@ function normalizeManagerState(value: ManagerState) {
       }
     }
   }
+  normalized.categories = normalizeCategories(value.categories);
+  normalized.categoryMembers = normalizeCategoryMembers(value.categoryMembers, normalized.categories);
   return normalized;
+}
+
+const CATEGORY_NAME_MAX = 24;
+
+function categoryRootKey(key: string) {
+  if (rootByKey(key) || PROJECT_ROOT_KEY_RE.test(key)) return key;
+  return null;
+}
+
+function normalizeCategories(value: ManagerState["categories"] | undefined) {
+  const categories: ManagerState["categories"] = Object.create(null);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return categories;
+  for (const [key, list] of Object.entries(value)) {
+    if (!categoryRootKey(key) || !Array.isArray(list)) continue;
+    const seen = new Set<string>();
+    categories[key] = [];
+    for (const item of list) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const id = typeof item.id === "string" ? item.id : "";
+      const name = typeof item.name === "string" ? item.name.trim() : "";
+      if (!/^[a-z0-9]{8,32}$/.test(id) || !name || name.length > CATEGORY_NAME_MAX || seen.has(id)) continue;
+      seen.add(id);
+      categories[key].push({ id, name });
+    }
+  }
+  return categories;
+}
+
+function normalizeCategoryMembers(value: ManagerState["categoryMembers"] | undefined, categories: ManagerState["categories"]) {
+  const members: ManagerState["categoryMembers"] = Object.create(null);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return members;
+  for (const [key, record] of Object.entries(value)) {
+    if (!categoryRootKey(key) || !record || typeof record !== "object" || Array.isArray(record)) continue;
+    const ids = new Set((categories[key] || []).map((item) => item.id));
+    members[key] = Object.create(null);
+    for (const [name, id] of Object.entries(record)) {
+      if (validStateSkillName(name) && typeof id === "string" && ids.has(id)) members[key][name] = id;
+    }
+  }
+  return members;
 }
 
 export async function readManagerState(): Promise<PolicyResult> {
@@ -1724,6 +1765,110 @@ async function setPolicySkillEnabled(root: RootInput, name: string, enabled: boo
 /** enabled=true 恢复模型与 / 手动调用；false 同时停用两种调用入口。 */
 export async function setSkillEnabled(root: RootInput, name: string, enabled: boolean, log?: Log) {
   return setPolicySkillEnabled(root, name, enabled, log);
+}
+
+function categoryError(code: string, error: string, params?: Record<string, unknown>): OperationError {
+  return { ok: false, code, error, ...(params ? { params } : {}) };
+}
+
+async function writableCategoryState(key: string) {
+  const rootKey = categoryRootKey(key);
+  if (!rootKey) return categoryError("error.category.root", `技能来源不存在: ${key}`, { root: key });
+  const current = await readManagerState();
+  if (current.writable === false) return invalidManagerStateWrite();
+  if (!current.state.categories[rootKey]) current.state.categories[rootKey] = [];
+  if (!current.state.categoryMembers[rootKey]) current.state.categoryMembers[rootKey] = Object.create(null);
+  return { rootKey, state: current.state };
+}
+
+export async function createCategory(key: string, name: string, log?: Log) {
+  const ready = await writableCategoryState(key);
+  if ("ok" in ready) return ready;
+  const label = String(name || "").trim();
+  if (!label || label.length > CATEGORY_NAME_MAX)
+    return categoryError("error.category.name", "分类名称不能为空，且不能超过 24 个字符");
+  if (ready.state.categories[ready.rootKey].some((item) => item.name === label))
+    return categoryError("error.category.duplicate", `已有同名分类: ${label}`, { name: label });
+  const category = { id: randomBytes(8).toString("hex"), name: label };
+  ready.state.categories[ready.rootKey].push(category);
+  await writeManagerState(ready.state);
+  if (log) log("category-create", `在 ${ready.rootKey} 添加分类 ${label}`);
+  return { root: ready.rootKey, category };
+}
+
+export async function renameCategory(key: string, id: string, name: string, log?: Log) {
+  const ready = await writableCategoryState(key);
+  if ("ok" in ready) return ready;
+  const label = String(name || "").trim();
+  const list = ready.state.categories[ready.rootKey];
+  const category = list.find((item) => item.id === id);
+  if (!category) return categoryError("error.category.notFound", "分类不存在", { id });
+  if (!label || label.length > CATEGORY_NAME_MAX)
+    return categoryError("error.category.name", "分类名称不能为空，且不能超过 24 个字符");
+  if (list.some((item) => item !== category && item.name === label))
+    return categoryError("error.category.duplicate", `已有同名分类: ${label}`, { name: label });
+  category.name = label;
+  await writeManagerState(ready.state);
+  if (log) log("category-rename", `重命名 ${ready.rootKey} 分类为 ${label}`);
+  return { root: ready.rootKey, category };
+}
+
+export async function deleteCategory(key: string, id: string, log?: Log) {
+  const ready = await writableCategoryState(key);
+  if ("ok" in ready) return ready;
+  const list = ready.state.categories[ready.rootKey];
+  if (!list.some((item) => item.id === id)) return categoryError("error.category.notFound", "分类不存在", { id });
+  ready.state.categories[ready.rootKey] = list.filter((item) => item.id !== id);
+  for (const [skillName, categoryId] of Object.entries(ready.state.categoryMembers[ready.rootKey])) {
+    if (categoryId === id) delete ready.state.categoryMembers[ready.rootKey][skillName];
+  }
+  await writeManagerState(ready.state);
+  if (log) log("category-delete", `删除 ${ready.rootKey} 分类 ${id}，技能留在未分类`);
+  return { root: ready.rootKey, id };
+}
+
+export async function assignSkillCategory(key: string, skillName: string, categoryId: string, log?: Log) {
+  const ready = await writableCategoryState(key);
+  if ("ok" in ready) return ready;
+  if (!validStateSkillName(skillName))
+    return categoryError("error.skill.notFound", `技能不存在: ${skillName}`, { name: skillName });
+  if (categoryId && !ready.state.categories[ready.rootKey].some((item) => item.id === categoryId))
+    return categoryError("error.category.notFound", "分类不存在", { id: categoryId });
+  if (categoryId) ready.state.categoryMembers[ready.rootKey][skillName] = categoryId;
+  else delete ready.state.categoryMembers[ready.rootKey][skillName];
+  await writeManagerState(ready.state);
+  if (log) log("category-assign", `${ready.rootKey}/${skillName} 归入 ${categoryId || "未分类"}`);
+  return { root: ready.rootKey, name: skillName, categoryId: categoryId || null };
+}
+
+export async function setCategoryEnabled(key: string, categoryId: string, enabled: boolean, log?: Log, options: ScopeOptions = {}) {
+  const ready = await writableCategoryState(key);
+  if ("ok" in ready) return ready;
+  let root = rootByKey(ready.rootKey) || null;
+  if (!root && PROJECT_ROOT_KEY_RE.test(ready.rootKey))
+    root = (await projectRoots(options.projectCwds)).find((item) => item.key === ready.rootKey) || null;
+  if (!root) return categoryError("error.category.root", `技能来源不存在: ${key}`, { root: key });
+  if (categoryId && categoryId !== "*" && !ready.state.categories[ready.rootKey].some((item) => item.id === categoryId))
+    return categoryError("error.category.notFound", "分类不存在", { id: categoryId });
+  const scanned = (await scanEntries(root)).entries.map((entry) => entry.name);
+  const members = ready.state.categoryMembers[ready.rootKey];
+  const names = categoryId === "*"
+    ? scanned
+    : categoryId
+      ? Object.entries(members).filter(([, id]) => id === categoryId).map(([name]) => name)
+      : scanned.filter((name) => !members[name]);
+  const skipped: string[] = [];
+  let changed = 0;
+  for (const name of names) {
+    const result = await setPolicySkillEnabled(root, name, enabled, log);
+    if (result && result.ok === false) {
+      if (result.code === "error.skill.notLoadable" || result.code === "error.skill.noFrontmatter") skipped.push(name);
+      else if (result.code !== "error.skill.notFound") return result;
+      continue;
+    }
+    changed += 1;
+  }
+  return { root: ready.rootKey, categoryId: categoryId || null, enabled: enabled === true, changed, skipped };
 }
 
 async function safeExistingEntryPaths(root: string, name: string) {
@@ -3162,6 +3307,7 @@ export async function state(options: ScopeOptions = {}) {
         effectiveUserInvocable: policy.userInvocable,
         diagnostics: e.diagnostics,
         path: e.docPath,
+        categoryId: policyResult.state.categoryMembers[root.key]?.[e.name] || null,
       });
       all.push({
         root,
@@ -3197,6 +3343,7 @@ export async function state(options: ScopeOptions = {}) {
           root.kind === "project-dsh" ||
           policyResult.state.sources[root.key] !== false),
       skills,
+      categories: policyResult.state.categories[root.key] || [],
     });
   }
   const userItems = all.filter((item) => item.root.scope !== "project");

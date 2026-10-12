@@ -26,7 +26,7 @@
 把散落在本机和项目中的技能集中到 DSH，无需在多个 Agent 目录间来回查找。
 
 - **统一管理**：按来源分组，搜索技能、查看正文，一键启用或停用。
-- **区分全局与项目**：项目页列出所有已登记的工作区，默认折叠；同名技能优先使用项目副本。
+- **区分全局与项目**：项目页在顶部下拉选择已登记工作区，下方按来源显示该工作区的技能，列表样式与全局技能一致；同名技能优先使用项目副本。
 - **复用已有技能**：支持 Codex、Claude Code、Copilot 等常见 Agent，启停不会修改它们的源文件。
 - **创建与导入**：新建技能，或导入 ZIP、技能文件夹和 `SKILL.md`，保存到用户目录（默认）或已登记工作区。用户目录支持 DSH skills 与 Shared Agent。
 - **回收与恢复**：删除 DSH 技能后先进入回收站，误删可找回。
@@ -87,9 +87,9 @@ dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=htt
 | 恢复更新前版本 | 对有备份的技能点击「恢复上一版」，预览并确认。 |
 | 找回误删 | 打开「回收站」恢复。 |
 
-- **按已登记工作区查看**：项目页列出 DSH 里已登记的工作区。Git 仓库使用最近的 Git 根目录；普通文件夹使用工作区目录，无需 `git init`。展开某个工作区时才扫描它的技能。
+- **按已登记工作区查看**：项目页顶部下拉列出 DSH 里已登记的工作区，选中后只读取并显示这一项的技能，搜索也只针对所选工作区。Git 仓库使用最近的 Git 根目录；普通文件夹使用工作区目录，无需 `git init`。没有技能的工作区也可选择，失效目录不可选。
 - **同名技能独立启停**：停用项目副本后，其他已启用副本仍可接管，页面会提示实际来源。要完全关闭该技能，需停用全部副本。
-- **文件管理范围**：DSH 来源的技能可从管理页移入回收站；从仓库安装到 DSH、公共 Agent 或已登记工作区的副本也可从「技能仓库」卸载。Codex、Claude 等其他外部技能仍只读。创建、文件导入和仓库安装可以写入用户目录下的 DSH skills 或公共 Agent（Shared Agent），也可以写入某个已登记工作区的 `.dsh/skills`。工作区不会被预先选中，也不能选 Shared Agent。
+- **文件管理范围**：DSH 来源的技能可从管理页移入回收站；从仓库安装到 DSH、公共 Agent 或已登记工作区的副本也可从「技能仓库」卸载。Codex、Claude 等其他外部技能仍只读。创建、文件导入和仓库安装可以写入用户目录下的 DSH skills 或公共 Agent（Shared Agent），也可以写入某个已登记工作区的 `.dsh/skills`。创建、导入和安装时，工作区不会被预先选中，也不能选 Shared Agent；项目页的只读查看选择不作为写入目标。
 - **恢复**：已卸载副本的仓库来源绑定到具体回收站条目；仅显式恢复后重新启用来源、安装位置和更新/恢复历史。其他同名技能不会继承仓库管理权限。卸载公共 Agent 副本会影响使用该目录的所有 Agent。
 
 ### 仓库使用边界
@@ -124,9 +124,8 @@ dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=htt
 | Qoder | `~/.qoder/skills` | `<project>/.qoder/skills` |
 | Qoder CN CLI | `~/.qoder-cn/skills` | — |
 | Qoder CN | `~/.lingma/skills` | `<project>/.lingma/skills` |
-| 项目 Skills | — | `<project>/skills` |
 
-通用的 `<project>/skills` 显示为「项目 Skills」，也可读取 OpenClaw workspace 技能。Qoder CN CLI 的项目技能在 `<project>/.qoder/skills`，显示为 Qoder。Qoder CN IDE 使用 Lingma 目录。不存在的外部来源目录不会显示。
+不扫描普通项目根目录的 `<project>/skills`，避免把仓库的发布资源当作 Agent 技能。OpenClaw / Clawdbot 仅保留上表中的用户级来源。Qoder CN CLI 的项目技能在 `<project>/.qoder/skills`，显示为 Qoder。Qoder CN IDE 使用 Lingma 目录。不存在的外部来源目录不会显示。
 
 ## DSH 产品生态
 

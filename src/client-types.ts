@@ -29,6 +29,12 @@ export type ApiRoutes = RepositoryRoutes & {
     '/disable': unknown;
     '/source-enable': unknown;
     '/source-disable': unknown;
+    '/category-create': unknown;
+    '/category-rename': unknown;
+    '/category-delete': unknown;
+    '/category-assign': unknown;
+    '/category-enable': unknown;
+    '/category-disable': unknown;
 };
 export type ApiCall = <K extends keyof ApiRoutes>(path: K, options?: RequestInit) => Promise<ApiRoutes[K]>;
 export interface ModalProps {
@@ -44,6 +50,7 @@ export interface SourceSelectProps {
     label: string;
     disabled?: boolean;
     action?: boolean;
+    icon?: React.ReactNode;
     options: {
         value: string;
         label: string;

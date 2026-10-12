@@ -27,7 +27,7 @@ This README describes **1.1.15**. Released changes are in the [changelog](CHANGE
 Bring skills from your computer and projects into DSH without switching between Agent folders.
 
 - **Manage in one place**: browse collapsible source groups, search, read, and toggle skills.
-- **Global and project skills**: the project tab lists every registered workspace, collapsed by default. Project copies take priority over global copies.
+- **Global and project skills**: select a registered workspace from the project tab dropdown. Its skills use the same source-group layout as global skills. Project copies take priority over global copies.
 - **Reuse existing skills**: supports Codex, Claude Code, Copilot, and other agents without modifying their source files when toggled.
 - **Create and import**: create a skill or import ZIP archives, folders, and `SKILL.md` files into your user directory (default) or a registered workspace. User-level writes can go to DSH skills or Shared Agent.
 - **Skill repositories**: discover public GitHub skills, install without overwriting local files, review updates and restore backups.
@@ -87,9 +87,9 @@ Restart DSH, refresh the page, and open **Settings → Skills**. To update, sele
 | Roll back an update | Select **Restore previous version** for a skill with a backup, preview and confirm. |
 | Recover a deletion | Open **Trash** and restore. |
 
-- **Registered workspaces**: the project tab lists the workspaces registered in DSH. Git repositories use the nearest Git root; other folders use the workspace directory, so no `git init` is required. Skills are scanned only when you expand a workspace.
+- **Registered workspaces**: select a registered workspace from the project tab dropdown. Only that workspace is scanned, displayed and searched. Git repositories use the nearest Git root; other folders use the workspace directory, so no `git init` is required. Empty workspaces remain selectable; unavailable directories are disabled.
 - **Independent copies**: disabling a project copy allows another enabled copy to take over, and the panel identifies the active source. Disable all copies to turn the skill off completely.
-- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH, Shared Agent, or a registered workspace can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. A workspace is never preselected, and Shared Agent is not available for workspaces.
+- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH, Shared Agent, or a registered workspace can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. Creation, import and installation never preselect a workspace, and Shared Agent is not available for workspaces. The project tab viewing selection is not a write destination.
 - **Restore**: retired repository provenance belongs to the specific Trash entry and is reactivated only by an explicit restore, including the destination and update/rollback history. A different same-name skill does not inherit repository management. Uninstalling a Shared Agent copy affects every agent using that directory.
 
 ### Repository boundaries
@@ -124,9 +124,8 @@ Restart DSH, refresh the page, and open **Settings → Skills**. To update, sele
 | Qoder | `~/.qoder/skills` | `<project>/.qoder/skills` |
 | Qoder CN CLI | `~/.qoder-cn/skills` | — |
 | Qoder CN | `~/.lingma/skills` | `<project>/.lingma/skills` |
-| Project Skills | — | `<project>/skills` |
 
-The generic `<project>/skills` directory is labeled **Project Skills** and also supports OpenClaw workspace skills. Qoder CN CLI project skills use `<project>/.qoder/skills` and appear as Qoder. Qoder CN IDE uses the Lingma directories. Missing external source directories are not shown.
+Ordinary project-root `<project>/skills` directories are not scanned, so repository release resources are not exposed as Agent skills. OpenClaw / Clawdbot support is limited to the user-level sources above. Qoder CN CLI project skills use `<project>/.qoder/skills` and appear as Qoder. Qoder CN IDE uses the Lingma directories. Missing external source directories are not shown.
 
 ## DSH product ecosystem
 

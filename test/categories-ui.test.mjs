@@ -1,0 +1,191 @@
+// 分类嵌在每个来源里；浏览下拉包含空工作区，写入目标仍需单独点选。
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+
+let definition, component, cursor = 0, state = [];
+const effects = [], outerState = [];
+let innerState = [], mountedKey;
+const react = {
+  createElement: (type, props, ...children) => ({ type, props: props || {}, children: children.flat(Infinity).filter((child) => child != null && typeof child !== "boolean") }),
+  useState(initial) { const index = cursor++, store = state; if (!(index in store)) store[index] = initial; return [store[index], (next) => { store[index] = typeof next === "function" ? next(store[index]) : next; }]; },
+  useRef(value) { const index = cursor++; return state[index] || (state[index] = { current: value }); },
+  useEffect(effect) { const index = cursor++; if (!(index in state)) { state[index] = true; effects.push(effect); } },
+  useLayoutEffect() { cursor++; },
+  forwardRef(render) { return render; },
+  createContext() { return { Provider() {}, Consumer() {} }; },
+  useMemo(fn) { return fn(); }, useCallback(fn) { return fn; }, useContext() { return {}; }, useId() { return "id"; }, memo(c) { return c; },
+  Fragment: Symbol.for("react.fragment"), version: "18.3.1",
+  Children: { map(children, fn) { return [].concat(children ?? []).filter((c) => c != null).map(fn); }, forEach() {}, count: () => 0, toArray: (c) => [].concat(c ?? []), only: (c) => c },
+  isValidElement: (v) => !!v && typeof v === "object", cloneElement: (e) => e, createRef: () => ({ current: null }),
+  Component: class { constructor(props) { this.props = props; } }, PureComponent: class { constructor(props) { this.props = props; } },
+};
+
+const skill = (name, extra = {}) => ({ name, description: "DESC_" + name, enabled: true, loadable: true, ...extra });
+const globalData = {
+  writeDestinations: [{ key: "dsh", path: "C:/u/.dsh/skills", label: "DSH", available: true }],
+  projects: [], trash: [], warnings: [],
+  roots: [
+    { key: "dsh", mutable: true, path: "C:/u/.dsh/skills", categories: [{ id: "work", name: "工作" }], skills: [skill("kept", { categoryId: "work" }), skill("other", { categoryId: "work", enabled: false }), skill("loose")] },
+    { key: "codex", exists: true, toggleable: true, enabled: true, path: "C:/u/.codex/skills", categories: [], skills: [skill("codex-one")] },
+  ],
+};
+const workspaces = [
+  { name: "alpha", path: "D:/work/alpha", projectRoot: "D:/work/alpha", registeredPaths: ["D:/work/alpha"], available: true, skillCount: 2 },
+  { name: "empty-notes", path: "D:/work/empty", projectRoot: "D:/work/empty", registeredPaths: ["D:/work/empty"], available: true, skillCount: 0 },
+];
+const details = {
+  "D:/work/empty": { warnings: [], roots: [] },
+  "D:/work/alpha": { warnings: [], roots: [
+    { key: "project-dsh:a", scope: "project", kind: "project-dsh", localeKey: "projectDsh", mutable: true, path: "D:/work/alpha/.dsh/skills", projectRoot: "D:/work/alpha", categories: [{ id: "pwork", name: "项目工作" }], skills: [skill("alpha-one", { categoryId: "pwork" }), skill("alpha-two", { enabled: false })] },
+  ] },
+};
+const calls = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url, options = {}) => {
+  const body = options.body ? JSON.parse(options.body) : undefined;
+  calls.push({ url: String(url), method: options.method || "GET", body });
+  const path = String(url).replace("/api/dsh-skills-manager", "");
+  const data = path === "/state" ? globalData : path === "/workspaces" ? { items: workspaces } : path === "/workspace-skills" ? details[body.workspace] : { name: body?.name || "ok" };
+  return { ok: true, json: async () => ({ ok: true, data }) };
+};
+const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+try {
+  new Function("window", await readFile(process.env.DSH_CLIENT_TEST_BUNDLE || new URL("../lib/client.js", import.meta.url), "utf8"))({ __ModuleLoader__: { load(value) { definition = value; } } });
+  const client = definition.factory((id) => {
+    if (id === "react") return react;
+    if (id === "react/jsx-runtime") return { jsx: react.createElement, jsxs: react.createElement, Fragment: react.Fragment };
+    if (id.startsWith("react-dom")) return { createPortal: (node) => node };
+    throw new Error("unexpected require: " + id);
+  });
+  client.apply({ effect() {}, slots: { inject(name, fn) { fn(); }, register(options, fn) { component = fn; } } });
+  const t = (key, params = {}) => (client.DICT.zh[key] || key).replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? "{" + name + "}"));
+  let tree;
+  function render() {
+    state = outerState; cursor = 0;
+    const view = component({ t, useSessions: (selector) => selector({ current: undefined }) });
+    if (mountedKey !== view.props.key) { mountedKey = view.props.key; innerState = []; }
+    state = innerState; cursor = 0; tree = view.type(view.props);
+  }
+  function linkedNodes(value, out = []) {
+    if (value == null || typeof value === "boolean" || typeof value === "string" || typeof value === "number") return out;
+    if (Array.isArray(value)) { value.forEach((item) => linkedNodes(item, out)); return out; }
+    out.push(value); return out;
+  }
+  function nodes(node = tree) {
+    if (!node || typeof node !== "object" || Array.isArray(node)) return [];
+    if (typeof node.type === "function" && Array.isArray(node.props?.options) && node.props.label && node.props.onChange) return [{ type: "select-fixture", props: { "aria-label": node.props.label, options: node.props.options, onChange: (event) => node.props.onChange(event?.target ? event.target.value : event) }, children: [] }];
+    if (node.type?.name === "SkillSwitch" || node.props?.closeLabel || (typeof node.type === "function" && node.props && "on" in node.props && typeof node.props.label === "string")) return nodes(node.type({ ...node.props, children: node.children }));
+    if (typeof node.type === "function" && node.props && "userDestinations" in node.props) return nodes(node.type(node.props));
+    const nested = linkedNodes(node.children);
+    if (typeof node.type === "function") {
+      for (const key of ["header", "extra", "actions", "title", "description"]) linkedNodes(node.props?.[key], nested);
+      if (Array.isArray(node.props?.items)) node.props.items.forEach((item) => { linkedNodes(item?.label, nested); linkedNodes(item?.extra, nested); linkedNodes(item?.children, nested); });
+    }
+    return [node, ...nested.flatMap((child) => nodes(child))];
+  }
+  const find = (predicate) => nodes().find(predicate);
+  const rows = () => nodes().filter((node) => node.props.className === "dssm-name").map((node) => node.children[0]);
+  const settle = async () => { render(); effects.splice(0).forEach((effect) => effect()); await tick(); await tick(); render(); };
+  const tab = async (name) => {
+    const tabs = find((node) => node.props?.block === true && Array.isArray(node.props.options));
+    tabs.props.onChange(tabs.props.options.find((item) => item.label === name || (Array.isArray(item.label) && item.label.includes(name))).value);
+    await settle();
+  };
+  const sources = () => nodes().filter((node) => node.props.className === "dssm-source" && Array.isArray(node.props.items));
+  const expand = (group) => { group.props.onChange([group.props.items[0].key]); render(); };
+  const textOf = (node) => JSON.stringify(nodes(node).flatMap((item) => item.children.filter((child) => typeof child === "string")));
+
+  await settle();
+  sources().forEach(expand);
+
+  const dsh = sources().find((node) => textOf(node).includes("kept"));
+  const codex = sources().find((node) => textOf(node).includes("codex-one"));
+  assert.equal(nodes(codex).some((node) => node.props.className === "dssm-cat"), false, "没建分类时不套分类层");
+  assert.ok(rows().includes("codex-one"), "没建分类时技能仍平铺");
+  assert.ok(nodes(codex).some((node) => String(node.props["aria-label"] || "").includes(t("source.toggle"))), "已有来源开关的来源仍用那颗开关");
+  assert.equal(nodes(dsh).some((node) => String(node.props["aria-label"] || "").includes(t("source.toggle"))), false, "DSH 不打开来源级总开关");
+  assert.equal(nodes(dsh).some((node) => node.children.includes(t("category.enableAll")) || node.children.includes(t("category.disableAll"))), false, "DSH 不再用全部开启和全部关闭");
+  assert.ok(nodes(dsh).some((node) => node.props.className === "dssm-skill-row"), "技能行有独立容器");
+  assert.ok(nodes(dsh).some((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "工作"), "分类嵌在来源里");
+  const work = nodes(dsh).find((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "工作");
+  assert.deepEqual(nodes(work).filter((node) => node.props.className === "dssm-name").map((node) => node.children[0]), ["kept", "other"], "只列出归入该分类的技能");
+  const workSwitch = nodes(work).find((node) => node.props["aria-label"] === t("category.toggle") + " 工作");
+  assert.equal(workSwitch.props.checked, false, "没有全部开启时分类开关显示关");
+  assert.equal(workSwitch.props.size, "small", "分类启停用最小号 Switch");
+  assert.match(workSwitch.props.styles({ props: { checked: false } }).root.backgroundColor, /state-error-primary/, "关闭是红色");
+  assert.ok(textOf(work).includes(t("category.progress", { count: 2, enabled: 1, usable: 2 })), "部分开启写在数量里");
+  const loose = nodes(dsh).find((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === t("category.uncategorized"));
+  assert.deepEqual(nodes(loose).filter((node) => node.props.className === "dssm-name").map((node) => node.children[0]), ["loose"]);
+  const more = nodes(work).find((node) => node.props["aria-label"] === t("btn.more"));
+  assert.ok(more.props.options.some((option) => option.label === t("category.assign", { name: "工作" })), "归类放进已有的更多");
+  assert.ok(more.props.options.some((option) => option.value === "detail"), "查看详情放进更多");
+  assert.ok(more.props.options.some((option) => option.value === "trash" && option.danger), "删除技能放进更多");
+  const create = nodes(dsh).find((node) => node.props["aria-label"] === t("category.create"));
+  assert.ok(create && create.props.icon, "新建分类是图标");
+  assert.equal((create.children || []).includes(t("category.create")), false);
+  const rename = nodes(work).find((node) => node.props["aria-label"] === t("category.rename"));
+  const remove = nodes(work).find((node) => node.props["aria-label"] === t("category.delete"));
+  assert.ok(rename && rename.props.icon && remove && remove.props.icon, "重命名和删除分类是图标");
+  assert.ok(nodes(work).some((node) => node.props.className === "dssm-skill-desc" && node.children[0] === "DESC_kept"), "第二行只有描述");
+  assert.equal(nodes(work).some((node) => node.props.className === "dssm-row-source"), false, "技能行不再另起来源标签");
+  const keptToggle = nodes(work).find((node) => node.props["aria-label"] === t("skill.toggle") + " kept");
+  assert.equal(keptToggle.props.checked, true, "已启用的技能开关是开的");
+  assert.equal(keptToggle.props.size, "small", "技能启停用最小号 Switch");
+  assert.match(keptToggle.props.styles({ props: { checked: true } }).root.backgroundColor, /state-success-primary/, "打开是绿色");
+  const css = nodes().filter((node) => node.type === "style").map((node) => node.children.join("")).join("");
+  assert.match(css, /\.dssm-skill-row\{[^}]*padding:11px 13px/, "技能行留白对齐仓库行");
+  assert.match(css, /\.dssm-skill-desc\{[^}]*--dsw-alias-label-tertiary/, "描述用次级文字色");
+  assert.doesNotMatch(css, /#1677ff|#4176e6/);
+  assert.match(css, /\.dssm-stat\{[^}]*padding:4px 10px/, "顶部统计格子更矮");
+  assert.match(css, /\.dssm-icon-btn\{[^}]*width:22px/, "图标按钮同一尺寸");
+
+  await tab("项目技能");
+  const picker = find(node => node.props["aria-label"] === t("filter.workspace"));
+  assert.ok(picker, "项目页使用顶部工作区选择器");
+  assert.ok(picker.props.options.some(option => option.label === "empty-notes"), "空工作区也列在浏览下拉中");
+  assert.equal(nodes().some(node => node.props.className === "dssm-workspace"), false, "移除外层工作区折叠");
+  const projectSource = sources().find((node) => textOf(node).includes("alpha-one"));
+  assert.equal(projectSource.props.className, "dssm-source", "项目来源仍是来源卡片");
+  assert.ok(nodes(projectSource).some((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "项目工作"), "项目来源内部再套分类");
+  nodes(projectSource).find((node) => node.props["aria-label"] === t("category.toggle") + " 项目工作").props.onChange();
+  await tick(); await tick(); render();
+  const projectToggle = calls.filter((call) => call.url.endsWith("/category-disable")).at(-1);
+  assert.equal(projectToggle.body.root, "project-dsh:a");
+  assert.equal(projectToggle.body.category, "pwork");
+  assert.equal(projectToggle.body.workspace, "D:/work/alpha");
+
+  // 模态确认必须保留发起来源的工作区，不能改用当前所选项或 session。
+  const modalFailures = [];
+  for (const [action, route] of [["category.create", "/category-create"], ["category.rename", "/category-rename"], ["category.delete", "/category-delete"]]) {
+    const source = sources().find(node => textOf(node).includes("alpha-one"));
+    nodes(source).find(node => node.props["aria-label"] === t(action)).props.onClick();
+    render();
+    if (action !== "category.delete") {
+      find(node => node.props["aria-label"] === t("category.name")).props.onChange({ target: { value: "新的分类" } });
+      render();
+    }
+    find(node => node.props["aria-label"] === t("filter.workspace")).props.onChange("D:/work/empty");
+    await settle();
+    nodes().filter(node => node.children.includes(t(action)) && node.props.onClick).at(-1).props.onClick();
+    await settle();
+    const call = calls.filter(call => call.url.endsWith(route)).at(-1);
+    try { assert.equal(call?.body.workspace, "D:/work/alpha", route + " 保留原工作区"); }
+    catch (error) { modalFailures.push(error.message); }
+    assert.equal(call?.body.root, "project-dsh:a");
+    find(node => node.props["aria-label"] === t("filter.workspace")).props.onChange("D:/work/alpha");
+    await settle();
+  }
+  assert.deepEqual(modalFailures, [], "分类创建/重命名/删除均携带原工作区登记路径");
+
+  await tab("全局技能");
+  find((node) => node.children.includes(t("btn.create"))).props.onClick();
+  await settle();
+  find((node) => node.props["aria-label"] === t("dest.scope")).props.onChange("workspace");
+  render();
+  const workspaceOptions = find((node) => node.props["aria-label"] === t("dest.workspace")).props.options.map((option) => option.label);
+  assert.ok(workspaceOptions.includes("empty-notes"), "创建下拉仍列出没有技能的已登记工作区");
+  assert.ok(workspaceOptions.includes("alpha"));
+
+  console.log("categories ui ok");
+} finally { globalThis.fetch = originalFetch; }

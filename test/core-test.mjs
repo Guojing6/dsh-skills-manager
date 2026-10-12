@@ -364,8 +364,8 @@ ok(
   "settings panel localizes the CC Switch, Copilot, Cursor, and first-tier Agent sources in both dictionaries",
 );
 ok(
-  clientSource.includes('"aria-label": props.label'),
-  "category filter exposes an accessible label",
+  (await readFile(new URL("../src/source-select.ts", import.meta.url), "utf8")).includes('"aria-label": props.label'),
+  "筛选器在独立组件中提供可访问标签",
 );
 ok(
   (await readFile(new URL("../src/source-select.ts", import.meta.url), "utf8")).includes("popupMatchSelectWidth"),

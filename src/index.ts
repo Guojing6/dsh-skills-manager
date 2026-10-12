@@ -15,6 +15,11 @@ import {
   state,
   setSkillEnabled,
   setSourceEnabled,
+  createCategory,
+  renameCategory,
+  deleteCategory,
+  assignSkillCategory,
+  setCategoryEnabled,
   deleteSkill,
   permanentlyDeleteTrash,
   importSkill,
@@ -517,6 +522,18 @@ function apply(ctx: HostContext) {
               return run(res, () => withScope(body, (scope) => setSourceEnabled(String(body.root || ""), true, log, scopedOptions(scope))), afterWrite);
             case "/api/dsh-skills-manager/source-disable":
               return run(res, () => withScope(body, (scope) => setSourceEnabled(String(body.root || ""), false, log, scopedOptions(scope))), afterWrite);
+            case "/api/dsh-skills-manager/category-create":
+              return run(res, () => createCategory(String(body.root || ""), String(body.name || ""), log), afterWrite);
+            case "/api/dsh-skills-manager/category-rename":
+              return run(res, () => renameCategory(String(body.root || ""), String(body.id || ""), String(body.name || ""), log), afterWrite);
+            case "/api/dsh-skills-manager/category-delete":
+              return run(res, () => deleteCategory(String(body.root || ""), String(body.id || ""), log), afterWrite);
+            case "/api/dsh-skills-manager/category-assign":
+              return run(res, () => assignSkillCategory(String(body.root || ""), String(body.name || ""), String(body.category || ""), log), afterWrite);
+            case "/api/dsh-skills-manager/category-enable":
+              return run(res, () => withScope(body, (scope) => setCategoryEnabled(String(body.root || ""), body.all === true ? "*" : String(body.category || ""), true, log, scopedOptions(scope))), afterWrite);
+            case "/api/dsh-skills-manager/category-disable":
+              return run(res, () => withScope(body, (scope) => setCategoryEnabled(String(body.root || ""), body.all === true ? "*" : String(body.category || ""), false, log, scopedOptions(scope))), afterWrite);
             case "/api/dsh-skills-manager/delete":
               return run(res, () => withScope(body, async (scope) => deleteSkill(await requestRoot(String(body.root || "dsh"), scope?.projectCwds), String(body.name || ""), log)), afterWrite);
             case "/api/dsh-skills-manager/trash-restore":
@@ -575,4 +592,4 @@ function apply(ctx: HostContext) {
 export { activeSessionCwds, apply, inject, name, notifyChatCatalog, registerAgentSkillProviders };
 
 /** 请求体由各业务入口现有校验解析，此类型只声明路由转交的字段。 */
-type RequestBody = CreateInput & UploadInput & SkillRequest & RepositoryInput & {root?: string; source?: string; conflict?: string; dryRun?: boolean; workspace?: unknown; enabled?: boolean};
+type RequestBody = CreateInput & UploadInput & SkillRequest & RepositoryInput & {root?: string; source?: string; conflict?: string; dryRun?: boolean; workspace?: unknown; enabled?: boolean; category?: string; all?: boolean};

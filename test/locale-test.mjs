@@ -321,7 +321,6 @@ for (const base of [
   "summary.shadowed",
   "summary.invalid",
   "upload.selected",
-  "trash.count",
 ]) {
   ok(
     countKey(base, 1) in DICT.zh && countKey(base, 1) in DICT.en,
