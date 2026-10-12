@@ -455,11 +455,11 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
         var categories = root.categories || [];
         if (!categories.length) return filtered.length ? h(List, { split: false }, filtered.map(function (row) { return renderSkill(root, row.skill, workspacePath); })) : h("div", { className: "dssm-empty" }, t("empty.source"));
         var known: Record<string, boolean> = {};
-        var scope = scopeRows || filtered;
+        var allRows = scopeRows || filtered;
         categories.forEach(function (item) { known[item.id] = true; });
         var inCategory = function (list: { root: RootView; skill: SkillView }[], id: string) { return list.filter(function (row) { return id ? row.skill.categoryId === id : !row.skill.categoryId || !known[row.skill.categoryId]; }); };
-        var buckets = categories.map(function (item) { return { id: item.id, name: item.name, locked: false, skills: inCategory(filtered, item.id), scope: inCategory(scope, item.id) }; });
-        buckets.push({ id: "", name: t("category.uncategorized"), locked: true, skills: inCategory(filtered, ""), scope: inCategory(scope, "") });
+        var buckets = categories.map(function (item) { return { id: item.id, name: item.name, locked: false, skills: inCategory(filtered, item.id), scope: inCategory(allRows, item.id) }; });
+        buckets.push({ id: "", name: t("category.uncategorized"), locked: true, skills: inCategory(filtered, ""), scope: inCategory(allRows, "") });
         var searching = !!(query || filters.status);
         return h("div", null, h("p", { className: "dssm-note dssm-cat-note" }, t("category.note")), buckets.filter(function (bucket) { return !searching || bucket.skills.length; }).map(function (bucket) { return renderCategory(root, bucket, workspacePath, keyPrefix); }));
       }

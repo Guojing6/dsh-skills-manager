@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.zh-CN.md)
 
+## 1.1.16 - 2026-10-12
+
+- You can add categories inside each skill source and place skills in them. Categories stay in the manager and do not move files. Each category can be turned on or off together.
+- The project tab selects a registered workspace from the dropdown at the top. It no longer lists every workspace collapsed by default, and it no longer treats a plain skills folder at the project root as a skill source.
+
 ## 1.1.15 - 2026-10-11
 
 - Creating, importing, and installing from a repository can target a registered workspace. The copy goes to that project's `.dsh/skills`. The user directory stays the default, and the dialog warns that project files may be committed.
