@@ -944,7 +944,7 @@ eq(
   "translateError translates backup cleanup warning",
 );
 
-// ── 注册契约断言：inject 声明 locale，settings.section 注册携带 locale 命名空间 ──
+// ── 注册契约断言：入口在侧栏，由 main 键控面板 + sidebar.panellist 行组成 ──
 ok(
   Array.isArray(bundle.inject) && bundle.inject.includes("locale"),
   "bundle.inject declares the locale service",
@@ -1057,7 +1057,9 @@ ok(
   "settings separates scopes with a full-width segmented control",
 );
 
-let registerOptions = null;
+// 侧栏入口契约：main 键控面板承载页面，sidebar.panellist 行决定侧栏位置与文本。
+let mainEntry = null;
+let sidebarEntry = null;
 const fakeCtx = {
   effect(fn) {
     return fn();
@@ -1072,7 +1074,8 @@ const fakeCtx = {
   },
   slots: {
     inject(name, fn) {
-      if (name === "settings.section") registerOptions = fn();
+      if (name === "main") mainEntry = fn();
+      if (name === "sidebar.panellist") sidebarEntry = fn();
     },
     register(opts) {
       return opts;
@@ -1081,20 +1084,32 @@ const fakeCtx = {
 };
 bundle.apply(fakeCtx);
 ok(
-  registerOptions !== null && registerOptions.name === "settings.section",
-  "apply registers the settings.section entry",
+  mainEntry !== null && mainEntry.name === "main",
+  "apply registers the central main panel",
 );
 ok(
-  registerOptions !== null && registerOptions.locale === "skills-manager",
-  "settings.section registration declares the locale namespace",
+  sidebarEntry !== null && sidebarEntry.name === "sidebar.panellist",
+  "apply registers the sidebar entry",
 );
 ok(
-  registerOptions !== null && typeof registerOptions.label === "function",
-  "settings.section label is a thunk (re-read per locale revision)",
+  mainEntry !== null && sidebarEntry !== null && mainEntry.key === sidebarEntry.id,
+  "sidebar entry id addresses the main panel key",
 );
 ok(
-  registerOptions !== null && registerOptions.icon === "skill",
-  "settings.section registers the skill nav icon",
+  sidebarEntry !== null && sidebarEntry.locale === "skills-manager",
+  "sidebar entry declares the locale namespace",
+);
+ok(
+  sidebarEntry !== null && typeof sidebarEntry.label === "function",
+  "sidebar entry label is a thunk (re-read per locale revision)",
+);
+ok(
+  sidebarEntry !== null && sidebarEntry.order > 0 && sidebarEntry.order < 10,
+  "sidebar entry sorts between the shipped Plugins (0) and Schedules (10) rows",
+);
+ok(
+  !source.includes("settings.section"),
+  "the settings section entry is removed by the migration",
 );
 
 // 界面语言覆盖系统默认区域；多条警告使用对应语言的分隔符。

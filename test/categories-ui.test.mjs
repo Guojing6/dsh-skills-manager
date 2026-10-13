@@ -58,7 +58,7 @@ try {
     if (id.startsWith("react-dom")) return { createPortal: (node) => node };
     throw new Error("unexpected require: " + id);
   });
-  client.apply({ effect() {}, slots: { inject(name, fn) { fn(); }, register(options, fn) { component = fn; } } });
+  client.apply({ effect() {}, slots: { inject(name, fn) { fn(); }, register(options, fn) { if (options.name === "main") component = fn; } } });
   const t = (key, params = {}) => (client.DICT.zh[key] || key).replace(/\{(\w+)\}/g, (_, name) => String(params[name] ?? "{" + name + "}"));
   let tree;
   function render() {

@@ -86,6 +86,34 @@ export interface ViewProps extends SectionProps {
     expanded: Record<string, boolean>;
     setExpanded: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
+/**
+ * 一次 slot 注册的公共选项。
+ *
+ * slot 专属选项（`main` 的键、`sidebar.panellist` 的位置与文本）由宿主
+ * `dsh-client-ui-slots` 的插槽目录声明；这里只登记本插件用到的公共字段。
+ */
+export interface SlotRegistrationOptions {
+    name: string;
+    /** 键控插槽（`main`）的面板 id；与侧栏条目的 `id` 取同一值。 */
+    key?: string;
+    /** 列表插槽（`sidebar.panellist`）的条目 id。 */
+    id?: string;
+    /** 列表内的升序位置（缺省 0）；宿主按它决定侧栏行先后。 */
+    order?: number;
+    /** 导航行文本；thunk 在每次投影时重读，因此跟随语言切换。 */
+    label?: string | (() => string);
+    /** 注册时声明的 locale 命名空间，宿主用它解析 label。 */
+    locale: string;
+    /** 注入组件的业务 props（宿主渲染该 slot 时合并进标准 props）。 */
+    inject?: () => Record<string, unknown>;
+}
+/** 侧栏面板行交给图标的呈现参数（对应宿主 `SidebarPanelIconOwnerProps`）。 */
+export interface SidebarPanelIconProps {
+    /** 宿主请求的方形边长（px）。 */
+    size: number;
+    /** 该面板当前是否显示在中间列。 */
+    active: boolean;
+}
 export interface ClientContext {
     effect: (effect: () => void | (() => void), label?: string) => unknown;
     locale: {
@@ -96,14 +124,7 @@ export interface ClientContext {
     };
     slots: {
         inject: (name: string, factory: () => unknown) => unknown;
-        register: (options: {
-            name: string;
-            id: string;
-            order: number;
-            label: () => string;
-            icon: string;
-            locale: string;
-        }, component: React.ComponentType<SectionProps>) => unknown;
+        register: <P>(options: SlotRegistrationOptions, component: React.ComponentType<P>) => unknown;
     };
 }
 interface Require {

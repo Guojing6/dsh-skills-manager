@@ -19,7 +19,7 @@
 
 > DSH Skills Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
 
-This README describes **1.1.16**. Released changes are in the [changelog](CHANGELOG.md).
+This README describes **1.2.0**. Released changes are in the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -69,9 +69,9 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=https://registry.npmjs.org/
 ```
 
-Restart DSH, refresh the page, and open **Settings → Skills**. To update, select **Check for updates** or run the installation command again.
+Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plugins**). To update, select **Check for updates** or run the installation command again.
 
-- Plugin `1.1.18` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
+- Plugin `1.2.0` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
 
 ## Usage
 

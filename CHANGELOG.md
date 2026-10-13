@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2026-10-13
+
+- The entry moved from **Settings → Skills** to a **Skills** panel in the sidebar, directly below **Plugins**. It registers into the host's own panel slots, so the row shares the shipped sidebar layout, order and collapse behaviour instead of the page living inside Settings.
+- Every tab and action is unchanged: Global, Project, Trash and Repositories, plus search, filters, categories, create, import, install, update, rollback and restore. The Settings section is no longer registered.
+
 ## 1.1.18 - 2026-10-13
 
 - Visual and brand enhancements: integrate official brand logos for ecosystem sources (DSH, WorkBuddy, CC Switch, Codex, Qoder, Cursor, Claude Code, etc.), remove redundant collapse arrows on source cards, and preserve full paths.
