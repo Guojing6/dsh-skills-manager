@@ -98,13 +98,15 @@ try {
 
   await settle();
   sources().forEach(expand);
+  nodes().filter((node) => node.props.className === "dssm-cat-main").forEach((btn) => btn.props.onClick());
+  render();
 
   const dsh = sources().find((node) => textOf(node).includes("kept"));
   const codex = sources().find((node) => textOf(node).includes("codex-one"));
   assert.equal(nodes(codex).some((node) => node.props.className === "dssm-cat"), false, "没建分类时不套分类层");
   assert.ok(rows().includes("codex-one"), "没建分类时技能仍平铺");
   assert.ok(nodes(codex).some((node) => String(node.props["aria-label"] || "").includes(t("source.toggle"))), "已有来源开关的来源仍用那颗开关");
-  assert.equal(nodes(dsh).some((node) => String(node.props["aria-label"] || "").includes(t("source.toggle"))), false, "DSH 不打开来源级总开关");
+  assert.equal(nodes(dsh).some((node) => String(node.props["aria-label"] || "").includes(t("source.toggle"))), true, "DSH 打开来源级总开关");
   assert.equal(nodes(dsh).some((node) => node.children.includes(t("category.enableAll")) || node.children.includes(t("category.disableAll"))), false, "DSH 不再用全部开启和全部关闭");
   assert.ok(nodes(dsh).some((node) => node.props.className === "dssm-skill-row"), "技能行有独立容器");
   assert.ok(nodes(dsh).some((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "工作"), "分类嵌在来源里");
@@ -117,7 +119,7 @@ try {
   assert.ok(textOf(work).includes(t("category.progress", { count: 2, enabled: 1, usable: 2 })), "部分开启写在数量里");
   const loose = nodes(dsh).find((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === t("category.uncategorized"));
   assert.deepEqual(nodes(loose).filter((node) => node.props.className === "dssm-name").map((node) => node.children[0]), ["loose"]);
-  const more = nodes(work).find((node) => node.props["aria-label"] === t("btn.more"));
+  const more = nodes(loose).find((node) => node.props["aria-label"] === t("btn.more"));
   assert.ok(more.props.options.some((option) => option.label === t("category.assign", { name: "工作" })), "归类放进已有的更多");
   assert.ok(more.props.options.some((option) => option.value === "detail"), "查看详情放进更多");
   assert.ok(more.props.options.some((option) => option.value === "trash" && option.danger), "删除技能放进更多");
@@ -145,7 +147,7 @@ try {
   assert.ok(picker, "项目页使用顶部工作区选择器");
   assert.ok(picker.props.options.some(option => option.label === "empty-notes"), "空工作区也列在浏览下拉中");
   assert.equal(nodes().some(node => node.props.className === "dssm-workspace"), false, "移除外层工作区折叠");
-  const projectSource = sources().find((node) => textOf(node).includes("alpha-one"));
+  const projectSource = sources().find((node) => String(node.props.items?.[0]?.key).includes("project-dsh:a") || textOf(node).includes("alpha-one") || textOf(node).includes("项目 DSH"));
   assert.equal(projectSource.props.className, "dssm-source", "项目来源仍是来源卡片");
   assert.ok(nodes(projectSource).some((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "项目工作"), "项目来源内部再套分类");
   nodes(projectSource).find((node) => node.props["aria-label"] === t("category.toggle") + " 项目工作").props.onChange();

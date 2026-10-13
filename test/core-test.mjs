@@ -353,7 +353,7 @@ ok(
 ok(
   clientSource.includes('"root.ccswitch": "CC Switch"') &&
     clientSource.includes('"root.cursor": "Cursor"') &&
-    clientSource.includes('"root.copilot": "Copilot"') &&
+    clientSource.includes('"root.copilot": "GitHub Copilot"') &&
     clientSource.includes('"root.windsurf": "Windsurf"') &&
     clientSource.includes('"root.traeCn": "Trae CN"') &&
     clientSource.includes('"root.codebuddy": "CodeBuddy"') &&

@@ -458,7 +458,8 @@ eq(
   visibleSkillRoots([
     { key: "project-empty", scope: "project", exists: false, skills: [] },
     { key: "project-used", scope: "project", skills: [{ name: "demo" }] },
-    { key: "codex", scope: "user", skills: [] },
+    { key: "codex-absent", scope: "user", exists: false, skills: [] },
+    { key: "codex", scope: "user", exists: true, skills: [] },
   ])
     .map(function (root) {
       return root.key;
@@ -737,7 +738,7 @@ eq(bundle.currentSessionId({ byId: { other: { retainedBy: { sidebar: 1 } } } }),
 eq(bundle.currentSessionId({}), undefined, "currentSessionId is absent without a current session");
 ok(bundle.canToggleSource({ key: "copilot", toggleable: true }), "user Agent sources keep a source toggle");
 ok(bundle.canToggleSource({ key: "project-copilot:abc", kind: "project-copilot", toggleable: true }), "read-only project Agent sources expose a source toggle");
-ok(!bundle.canToggleSource({ key: "dsh", toggleable: true }), "user DSH has no source-wide toggle");
+ok(bundle.canToggleSource({ key: "dsh", toggleable: true }), "user DSH exposes a source-wide toggle");
 ok(!bundle.canToggleSource({ key: "project-dsh:abc", kind: "project-dsh", toggleable: true }), "project DSH has no source-wide toggle");
 eq(
   JSON.stringify(bundle.countSkillStatuses([

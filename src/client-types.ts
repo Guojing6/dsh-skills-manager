@@ -53,7 +53,7 @@ export interface SourceSelectProps {
     icon?: React.ReactNode;
     options: {
         value: string;
-        label: string;
+        label: React.ReactNode;
         disabled?: boolean;
         danger?: boolean;
     }[];

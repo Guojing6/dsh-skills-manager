@@ -57,7 +57,7 @@ const PROJECT_SOURCES = rankSources([
   // 保留原生项目 100/200；其余项目来源按统一 Agent 顺序生成 210–320。
   { key: "copilot", directory: ".github", localeKey: "copilot", label: "Copilot" },
   { key: "codex", directory: ".codex", localeKey: "codex", label: "Codex" },
-  { key: "claude", directory: ".claude", localeKey: "claude", label: "Claude" },
+  { key: "claude", directory: ".claude", localeKey: "claude", label: "Claude Code" },
   { key: "gemini", directory: ".gemini", localeKey: "gemini", label: "Gemini" },
   { key: "opencode", directory: ".opencode", localeKey: "opencode", label: "OpenCode" },
   { key: "cursor", directory: ".cursor", localeKey: "cursor", label: "Cursor" },
@@ -132,7 +132,7 @@ export function userRoots(): SkillRoot[] {
     {
       key: "dsh",
       path: join(resolveDshHome(), "skills"),
-      label: "DSH 技能",
+      label: "DSH",
       mutable: true,
       toggleable: true,
       native: true,
@@ -172,7 +172,7 @@ export function userRoots(): SkillRoot[] {
         process.env.DSH_CLAUDE_HOME || join(homedir(), ".claude"),
         "skills",
       ),
-      label: "Claude",
+      label: "Claude Code",
       mutable: false,
       toggleable: true,
       native: false,
@@ -1639,7 +1639,7 @@ export async function setSourceEnabled(key: string, enabled: boolean, log?: Log,
   let root = rootByKey(key);
   if (!root && PROJECT_ROOT_KEY_RE.test(key) && !key.startsWith("project-dsh:"))
     root = (await projectRoots(options.projectCwds)).find((item) => item.key === key);
-  if (!root || root.key === "dsh" || root.kind === "project-dsh" || !root.toggleable)
+  if (!root || root.kind === 'project-dsh' || !root.toggleable)
     return readonlyError("toggle");
   const current = await readManagerState();
   if (current.writable === false) return invalidManagerStateWrite();
@@ -3370,8 +3370,7 @@ export async function state(options: ScopeOptions = {}) {
       truncated: truncated === true,
       enabled:
         policyResult.writable !== false &&
-        (root.key === "dsh" ||
-          root.kind === "project-dsh" ||
+        (root.kind === "project-dsh" ||
           policyResult.state.sources[root.key] !== false),
       skills,
       categories: policyResult.state.categories[root.key] || [],
