@@ -46,13 +46,8 @@
     "verify": "node scripts/sync-hosts.mjs && npm test && npm run pack:check && node test/pack-test.mjs",
     "pack:check": "npm pack --dry-run --json",
     "prepack": "npm run typecheck && npm run build",
-    "prepublishOnly": "npm run verify",
     "test:compat": "node scripts/test-host-compatibility.mjs",
     "typecheck": "tsc --noEmit"
-  },
-  "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
-    "access": "public"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.1 <5.0.0",

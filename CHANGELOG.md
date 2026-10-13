@@ -4,7 +4,8 @@
 
 - The repository is now standalone: the package name, bundle patch and client bundle identifier are `@guojing6/dsh-skills-manager`, and the repository, issue and in-app project links point here.
 - The self-update endpoint is `/api/dsh-skills-manager/update` and the update request header is `x-dsh-skills-manager-plugin-update`; no upstream naming remains.
-- The README drops the upstream ecosystem listing, keeps a one-line attribution, and documents Git, local-path and `.tgz` installation instead of npm.
+- The READMEs were rewritten from scratch and are text only: the upstream ecosystem listing is gone, a one-line attribution remains, and installation is documented for Git, a local path and a `.tgz` instead of npm.
+- `package.json` no longer carries npm publishing settings; `publishConfig` and the `prepublishOnly` hook are removed, while local `.tgz` packing and the tag-driven GitHub Release stay as they were.
 - CI: pushes to `main` trigger verification, and the tag workflow creates a GitHub Release instead of publishing an npm package.
 
 ## 1.2.0 - 2026-10-13
