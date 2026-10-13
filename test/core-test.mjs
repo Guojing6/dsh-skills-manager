@@ -318,7 +318,7 @@ const clientSource = await readFile(
   "utf8",
 );
 ok(
-  clientBundle.includes('id: "@michengai/dsh-skills-manager"'),
+  clientBundle.includes('id: "@guojing6/dsh-skills-manager"'),
   "client registers the scoped package module ID",
 );
 ok(
@@ -438,24 +438,20 @@ const publishWorkflow = await readFile(
   "utf8",
 );
 ok(
-  publishWorkflow.includes("id-token: write"),
-  "publish workflow enables OIDC trusted publishing",
+  publishWorkflow.includes("./.github/workflows/verify.yml"),
+  "release workflow runs full verification before releasing",
 );
 ok(
-  publishWorkflow.includes("pnpm install --frozen-lockfile"),
-  "publish workflow installs the ZIP runtime dependency from the lockfile",
+  publishWorkflow.includes("./.github/workflows/release.yml"),
+  "release workflow creates the GitHub Release from the tag",
 );
 ok(
-  !publishWorkflow.includes("registry-url:"),
-  "publish workflow relies on package publishConfig instead of token-backed registry setup",
+  /"v\*"/.test(publishWorkflow),
+  "release workflow runs for version tags",
 );
 ok(
-  publishWorkflow.includes("npm run verify"),
-  "publish workflow runs the build, test, package, and generated-output checks",
-);
-ok(
-  publishWorkflow.includes("npm publish"),
-  "publish workflow publishes the package after tests",
+  !publishWorkflow.includes("npm publish") && !publishWorkflow.includes("id-token: write"),
+  "release workflow does not publish an npm package or request trusted publishing",
 );
 const verificationWorkflow = await readFile(
   new URL("../.github/workflows/verify.yml", import.meta.url),

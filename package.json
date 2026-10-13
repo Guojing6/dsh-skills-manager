@@ -1,16 +1,16 @@
 {
-  "name": "@michengai/dsh-skills-manager",
-  "version": "1.2.0",
+  "name": "@guojing6/dsh-skills-manager",
+  "version": "1.2.1",
   "description": "DSH Skills Manager — 在 DeepSeek Harness 中统一加载并安全管理本机 Agent Skills · Load and safely manage local Agent Skills in DSH",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MichengAI/dsh-skills-manager.git"
+    "url": "git+https://github.com/Guojing6/dsh-skills-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/MichengAI/dsh-skills-manager/issues"
+    "url": "https://github.com/Guojing6/dsh-skills-manager/issues"
   },
-  "homepage": "https://github.com/MichengAI/dsh-skills-manager#readme",
+  "homepage": "https://github.com/Guojing6/dsh-skills-manager#readme",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "main": "lib/index.js",

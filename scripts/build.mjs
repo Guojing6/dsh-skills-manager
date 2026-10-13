@@ -43,7 +43,7 @@ try {
     minify: true,
     define: { "process.env.NODE_ENV": "\"production\"" },
     banner: {
-      js: "window.__ModuleLoader__.load({ id: \"@michengai/dsh-skills-manager\", factory: (require) => {\nvar module = { exports: {} };\nvar exports = module.exports;",
+      js: "window.__ModuleLoader__.load({ id: \"@guojing6/dsh-skills-manager\", factory: (require) => {\nvar module = { exports: {} };\nvar exports = module.exports;",
     },
     footer: { js: "return module.exports;\n} });" },
   });

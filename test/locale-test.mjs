@@ -190,13 +190,13 @@ ok(
   "title links no longer use the old custom button chrome",
 );
 ok(
-  /href: "https:\/\/github\.com\/MichengAI\/dsh-skills-manager", target: "_blank", rel: "noreferrer", "aria-label": t\("link\.project"\)/.test(
+  /href: "https:\/\/github\.com\/Guojing6\/dsh-skills-manager", target: "_blank", rel: "noreferrer", "aria-label": t\("link\.project"\)/.test(
     source,
   ),
   "project link points to the Skills Manager repository",
 );
 ok(
-  /href: "https:\/\/github\.com\/MichengAI\/dsh-skills-manager\/issues"/.test(
+  /href: "https:\/\/github\.com\/Guojing6\/dsh-skills-manager\/issues"/.test(
     source,
   ),
   "feedback link points to the Skills Manager issue tracker",

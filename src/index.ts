@@ -349,8 +349,8 @@ function registerAgentSkillProviders(ctx: HostContext, invalidators: Set<() => v
 
 function apply(ctx: HostContext) {
   ctx.effect(() => registerPluginUpdater(ctx, {
-    endpoint: "/api/michengai/dsh-skills-manager/update",
-    packageName: "@michengai/dsh-skills-manager",
+    endpoint: "/api/dsh-skills-manager/update",
+    packageName: "@guojing6/dsh-skills-manager",
     manifestUrl: new URL("../package.json", import.meta.url),
   }), "skills-manager: plugin updater");
   const log = makeLog();

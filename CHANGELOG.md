@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1 - 2026-10-13
+
+- The repository is now standalone: the package name, bundle patch and client bundle identifier are `@guojing6/dsh-skills-manager`, and the repository, issue and in-app project links point here.
+- The self-update endpoint is `/api/dsh-skills-manager/update` and the update request header is `x-dsh-skills-manager-plugin-update`; no upstream naming remains.
+- The README drops the upstream ecosystem listing, keeps a one-line attribution, and documents Git, local-path and `.tgz` installation instead of npm.
+- CI: pushes to `main` trigger verification, and the tag workflow creates a GitHub Release instead of publishing an npm package.
+
 ## 1.2.0 - 2026-10-13
 
 - The entry moved from **Settings → Skills** to a **Skills** panel in the sidebar, directly below **Plugins**. It registers into the host's own panel slots, so the row shares the shipped sidebar layout, order and collapse behaviour instead of the page living inside Settings.

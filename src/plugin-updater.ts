@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-const PLUGIN_UPDATE_HEADER = "x-michengai-plugin-update";
+const PLUGIN_UPDATE_HEADER = "x-dsh-skills-manager-plugin-update";
 const PLUGIN_UPDATE_IPC = "apply-plugin-updates";
 function header(request: IncomingMessage, name: string) {
   const value = request.headers?.[name];

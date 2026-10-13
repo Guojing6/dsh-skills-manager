@@ -11,15 +11,14 @@
   [English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [MIT](LICENSE)
 
   [![许可证：MIT](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE)
-  [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-skills-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
-  [![npm 下载量](https://img.shields.io/npm/dt/%40michengai%2Fdsh-skills-manager.svg?label=npm%20%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
-  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-skills-manager)
+  [![GitHub](https://img.shields.io/badge/GitHub-Guojing6%2Fdsh--skills--manager-181717.svg)](https://github.com/Guojing6/dsh-skills-manager)
+  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/Guojing6/dsh-skills-manager)
   [![DSH 支持至 0.2.1-alpha.2](https://img.shields.io/badge/DSH-%E6%94%AF%E6%8C%81%E8%87%B3%200.2.1--alpha.2-2563eb.svg)](#安装)
 </div>
 
 > DSH Skills Manager 是社区维护的 DeepSeek Harness（DSH）插件，并非 DeepSeek AI 官方产品。
 
-本文描述 **1.2.0**。已发布变更见[更新日志](CHANGELOG.zh-CN.md)。
+本文描述 **1.2.1**。已发布变更见[更新日志](CHANGELOG.zh-CN.md)。
 
 ## 功能概览
 
@@ -51,14 +50,14 @@
 
 需要已安装并能正常运行 DeepSeek Harness。以下命令使用 `web` profile，请按实际环境替换。
 
-插件安装支持 npm registry、本地构建的 `.tgz` 包和 GitHub。GitHub 与 npm 都包含可直接运行的 `lib`。改动源码后，提交前请先运行构建。
+支持从本仓库的 Git 地址、本地检出目录或本地构建的 `.tgz` 包安装。仓库里已包含可直接运行的 `lib`，用 Git 安装无需构建。改动源码后，提交前请先运行构建。
 
 ### 让 Agent 帮你安装
 
 把这段话发给能够操作本机终端的 Agent：
 
 ```text
-请把 @michengai/dsh-skills-manager 最新版安装到我的 DSH web profile，使用官方 npm 源，安装后确认生效并告诉我如何重新加载。
+请把 https://github.com/Guojing6/dsh-skills-manager 这个插件安装到我的 DSH web profile，安装后确认生效并告诉我如何重新加载。
 ```
 
 ### 手动安装
@@ -66,12 +65,21 @@
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=https://registry.npmjs.org/
+dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.git
 ```
 
-安装后重启 DSH 并刷新页面，点击侧栏的「技能」（在「插件」下方）即可使用。更新时可点击「检查更新」，或重新执行安装命令。
+安装后重启 DSH 并刷新页面，点击侧栏的「技能」（在「插件」下方）即可使用。
 
-- `1.2.0` 已验证兼容 DeepSeek Harness `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`。
+`dsh plugin` 会把参数转发给 pnpm，因此本地检出目录或打包好的 `.tgz` 也可以同样安装：
+
+```powershell
+dsh plugin --profile web add E:\path\to\dsh-skills-manager
+dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
+```
+
+更新时重新拉取仓库并再次执行安装命令。标题区的「检查更新」依赖 npm 包，本仓库不发布 npm 包，因此检测不到新版本。
+
+- `1.2.1` 已验证兼容 DeepSeek Harness `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`。
 
 ## 使用说明
 
@@ -127,29 +135,15 @@ dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=htt
 
 不扫描普通项目根目录的 `<project>/skills`，避免把仓库的发布资源当作 Agent 技能。OpenClaw / Clawdbot 仅保留上表中的用户级来源。Qoder CN CLI 的项目技能在 `<project>/.qoder/skills`，显示为 Qoder。Qoder CN IDE 使用 Lingma 目录。不存在的外部来源目录不会显示。
 
-## DSH 产品生态
+## 来源声明
 
-想使用桌面工作台，可下载 [DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases)；已有 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 环境，可按各项目 README 按需安装。以下列出 11 个自研插件；桌面端实际随附范围以对应版本的发行说明和内置清单为准。
-
-| 插件 | 你可以用它做什么 |
-| --- | --- |
-| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | 整理项目与会话、搜索任务、跳转对话轮次 |
-| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | 按任务选择并召唤专业角色 |
-| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | 管理本机与项目技能，从仓库安装、更新和回退 |
-| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | 搜索、恢复或清理已归档会话 |
-| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | 从消息平台下任务、收回复 |
-| [Automation](https://github.com/MichengAI/dsh-automation) | 按计划执行任务，查看每次运行的结果 |
-| [BTW](https://github.com/MichengAI/dsh-btw) | 在当前上下文中临时旁问，不打断主任务 |
-| [Simplify](https://github.com/MichengAI/dsh-simplify) | 用 `/simplify` 整理 Git 改动范围内的代码 |
-| [PUA](https://github.com/MichengAI/dsh-pua) | 引导 Agent 在失败时换方法、查原因，并在完成前验证结果 |
-| [Code Review](https://github.com/MichengAI/dsh-code-review) | 用 `/review` 发起独立 Agent 代码审查，在当前会话接收报告 |
-| [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | 通过桌面宠物查看会话提醒、处理工具审批和问题回答 |
+本项目基于 [MichengAI/dsh-skills-manager](https://github.com/MichengAI/dsh-skills-manager) 二次开发，现独立维护。
 
 ## 反馈与贡献
 
-遇到问题或有建议，欢迎[提交 Issue](https://github.com/MichengAI/dsh-skills-manager/issues)。请附上 DSH 与插件版本、复现步骤；界面问题可附完整截图。
+遇到问题或有建议，欢迎[提交 Issue](https://github.com/Guojing6/dsh-skills-manager/issues)。请附上 DSH 与插件版本、复现步骤；界面问题可附完整截图。
 
-源码位于 `src`，使用严格 TypeScript，保留现有插件架构。开发时执行 `npm run typecheck` 检查类型，`npm run build` 生成运行产物，`npm run verify` 执行完整回归与打包验证。GitHub 与 npm 都包含可直接运行的 `lib`。改动源码后，提交前请先运行构建。打包前仍会自动检查类型并构建，npm 安装包仍包含所需 JavaScript 产物。CI 在 Node.js 22.19.0 和 24 上执行完整验证，代码改动也会自动触发受支持宿主兼容矩阵。欢迎提交改进。
+源码位于 `src`，使用严格 TypeScript，保留现有插件架构。开发时执行 `npm run typecheck` 检查类型，`npm run build` 生成运行产物，`npm run verify` 执行完整回归与打包验证。仓库里已包含可直接运行的 `lib`。改动源码后，提交前请先运行构建。打包前仍会自动检查类型并构建，打包产物仍包含所需 JavaScript 产物。CI 在 Node.js 22.19.0 和 24 上执行完整验证，代码改动也会自动触发受支持宿主兼容矩阵。欢迎提交改进。
 
 从源码制作测试包时，使用项目固定版本的 pnpm 安装依赖，执行 `npm run verify`，再执行 `npm pack`。用 `dsh plugin --profile web add <package.tgz>` 安装生成的 `.tgz`，重启 DSH 并刷新页面。打包时不要使用 `--ignore-scripts`，否则会跳过构建钩子。
 

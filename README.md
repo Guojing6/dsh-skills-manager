@@ -11,15 +11,14 @@
   [简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [MIT](LICENSE)
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-  [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-skills-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
-  [![npm downloads](https://img.shields.io/npm/dt/%40michengai%2Fdsh-skills-manager.svg?label=npm%20downloads)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
-  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-skills-manager)
+  [![GitHub](https://img.shields.io/badge/GitHub-Guojing6%2Fdsh--skills--manager-181717.svg)](https://github.com/Guojing6/dsh-skills-manager)
+  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/Guojing6/dsh-skills-manager)
   [![DSH supported through 0.2.1-alpha.2](https://img.shields.io/badge/DSH-up%20to%200.2.1--alpha.2-2563eb.svg)](#installation)
 </div>
 
 > DSH Skills Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
 
-This README describes **1.2.0**. Released changes are in the [changelog](CHANGELOG.md).
+This README describes **1.2.1**. Released changes are in the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -51,14 +50,14 @@ Skill repositories:
 
 Requires a working DeepSeek Harness installation. The commands below use the `web` profile; replace it with yours if needed.
 
-Supported plugin installation sources are the npm registry, a locally built `.tgz` package, and GitHub. GitHub and npm both include a ready-to-run `lib`. After changing source, run the build before committing.
+Install it from this Git repository, a local checkout, or a locally built `.tgz` package. The repository already contains a ready-to-run `lib`, so a Git install needs no build step. After changing source, run the build before committing.
 
 ### Ask an agent to install it
 
 Send this to an agent that can use your local terminal:
 
 ```text
-Install the latest @michengai/dsh-skills-manager into my DSH web profile using the official npm registry. Confirm installation and explain how to reload DSH.
+Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skills-manager into my DSH web profile, then confirm it is active and explain how to reload DSH.
 ```
 
 ### Install manually
@@ -66,12 +65,19 @@ Install the latest @michengai/dsh-skills-manager into my DSH web profile using t
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
-dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=https://registry.npmjs.org/
+dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.git
 ```
 
-Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plugins**). To update, select **Check for updates** or run the installation command again.
+`dsh plugin` forwards its arguments to pnpm, so a local checkout or a packed `.tgz` installs the same way:
 
-- Plugin `1.2.0` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
+```powershell
+dsh plugin --profile web add E:\path\to\dsh-skills-manager
+dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
+```
+
+Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plugins**). To update, pull the repository and run the installation command again. The header update banner checks an npm package, and this Git-only distribution does not publish one, so it cannot find a newer version.
+
+- Plugin `1.2.1` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
 
 ## Usage
 
@@ -127,29 +133,15 @@ Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plu
 
 Ordinary project-root `<project>/skills` directories are not scanned, so repository release resources are not exposed as Agent skills. OpenClaw / Clawdbot support is limited to the user-level sources above. Qoder CN CLI project skills use `<project>/.qoder/skills` and appear as Qoder. Qoder CN IDE uses the Lingma directories. Missing external source directories are not shown.
 
-## DSH product ecosystem
+## Attribution
 
-For a desktop workbench, download [DSH Codex Desktop](https://github.com/MichengAI/dsh-codex-desktop/releases). Existing [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) installations can add plugins as needed by following each project's README. Below are 11 first-party plugins; consult the corresponding desktop release notes and bundled catalog for what that version includes.
-
-| Plugin | What you can do |
-| --- | --- |
-| [Codex UI](https://github.com/MichengAI/dsh-codex-ui) | Organize projects and conversations, search tasks, and navigate chat turns |
-| [Agency Agents](https://github.com/MichengAI/dsh-agency-agents) | Choose and summon specialists for your task |
-| [Skills Manager](https://github.com/MichengAI/dsh-skills-manager) | Manage local and project skills; install, update and roll back repository skills |
-| [Archive Manager](https://github.com/MichengAI/dsh-archive-manager) | Search, restore, or clean up archived conversations |
-| [IM Connect](https://github.com/MichengAI/dsh-im-connect) | Send tasks and receive replies through messaging platforms |
-| [Automation](https://github.com/MichengAI/dsh-automation) | Schedule tasks and review each run |
-| [BTW](https://github.com/MichengAI/dsh-btw) | Ask side questions without interrupting the main task |
-| [Simplify](https://github.com/MichengAI/dsh-simplify) | Use `/simplify` to improve code within your Git changes |
-| [PUA](https://github.com/MichengAI/dsh-pua) | Guide the Agent to try new approaches after failures, investigate causes, and verify results before completion |
-| [Code Review](https://github.com/MichengAI/dsh-code-review) | Use `/review` to request an independent Agent code review and receive the report in the current conversation |
-| [Codex Pet](https://github.com/MichengAI/dsh-codex-pet) | View conversation notifications and respond to tool approvals and questions through a desktop pet |
+This project is a derivative of [MichengAI/dsh-skills-manager](https://github.com/MichengAI/dsh-skills-manager) and is now independently maintained.
 
 ## Feedback and contributions
 
-[Open an issue](https://github.com/MichengAI/dsh-skills-manager/issues) for bugs or suggestions. Include your DSH and plugin versions, reproduction steps, and a full screenshot for UI issues.
+[Open an issue](https://github.com/Guojing6/dsh-skills-manager/issues) for bugs or suggestions. Include your DSH and plugin versions, reproduction steps, and a full screenshot for UI issues.
 
-Source code lives in `src` and uses strict TypeScript while retaining the existing plugin architecture. Run `npm run typecheck` for type checks, `npm run build` to generate runtime files, and `npm run verify` for the full regression and package checks. GitHub and npm both include a ready-to-run `lib`. After changing source, run the build before committing. Packing still checks types and builds the JavaScript files required by the npm package. CI runs full verification on Node.js 22.19.0 and 24, and code changes also trigger the supported-host compatibility matrix. Contributions are welcome.
+Source code lives in `src` and uses strict TypeScript while retaining the existing plugin architecture. Run `npm run typecheck` for type checks, `npm run build` to generate runtime files, and `npm run verify` for the full regression and package checks. The repository includes a ready-to-run `lib`. After changing source, run the build before committing. Packing still checks types and builds the JavaScript files required by the packaged output. CI runs full verification on Node.js 22.19.0 and 24, and code changes also trigger the supported-host compatibility matrix. Contributions are welcome.
 
 To test a source checkout, install dependencies using the pinned pnpm version, run `npm run verify`, then run `npm pack`. Install the resulting `.tgz` with `dsh plugin --profile web add <package.tgz>`, restart DSH and refresh the page. Do not use `--ignore-scripts` when packing: it skips the build hook.
 

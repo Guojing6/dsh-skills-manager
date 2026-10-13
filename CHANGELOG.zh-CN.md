@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md)
 
+## 1.2.1 - 2026-10-13
+
+- 仓库完全独立：包名、bundle patch 与客户端产物标识改为 `@guojing6/dsh-skills-manager`，仓库地址、Issue 链接和界面内的项目入口都指向本仓库。
+- 自更新端点改为 `/api/dsh-skills-manager/update`，更新请求头改为 `x-dsh-skills-manager-plugin-update`，不再保留上游命名。
+- README 移除上游生态列表，只保留一句来源声明；安装说明改为 Git 地址、本地目录与 `.tgz` 三种方式。
+- CI：推送 `main` 触发验证；标签发布工作流改为创建 GitHub Release，不再发布 npm 包。
+
 ## 1.2.0 - 2026-10-13
 
 - 入口从「设置 → 技能」迁移到侧栏的「技能」面板，位置在「插件」下方。改用宿主自带的面板插槽注册，因此与内置行共用同一套行距、顺序与折叠行为，页面不再挂在设置里。
