@@ -1,66 +1,35 @@
-<p align="center">
-  <img src="assets/branding/dsh-banner-zh-CN.webp" alt="DSH Skills Manager" width="100%">
-</p>
-
-<div align="center">
-
 # DSH Skills Manager
 
-  **统一管理本机与项目技能，从 GitHub 安装、预览更新并备份回退**
+DSH Skills Manager 把本机上散落在各个 Agent 目录里的技能收进 DeepSeek Harness 的一个面板：已经装在 Codex、Claude Code、Copilot 等十多个目录里的技能、DSH 自己管理的技能，以及从公开 GitHub 仓库安装的技能。搜索、查看、启停、导入、安装、更新、回退都在 DSH 里完成，不用离开界面，也不用去改其他 Agent 的目录。
 
-  [English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [MIT](LICENSE)
+这是社区维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件，并非 DeepSeek AI 官方产品。
 
-  [![许可证：MIT](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE)
-  [![GitHub](https://img.shields.io/badge/GitHub-Guojing6%2Fdsh--skills--manager-181717.svg)](https://github.com/Guojing6/dsh-skills-manager)
-  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/Guojing6/dsh-skills-manager)
-  [![DSH 支持至 0.2.1-alpha.2](https://img.shields.io/badge/DSH-%E6%94%AF%E6%8C%81%E8%87%B3%200.2.1--alpha.2-2563eb.svg)](#安装)
-</div>
+- 版本：`1.2.1`
+- 仓库：<https://github.com/Guojing6/dsh-skills-manager>
+- 问题反馈：<https://github.com/Guojing6/dsh-skills-manager/issues>
+- 更新日志：[中文](CHANGELOG.zh-CN.md) · [English](CHANGELOG.md)
+- 许可证：[MIT](LICENSE)
 
-> DSH Skills Manager 是社区维护的 DeepSeek Harness（DSH）插件，并非 DeepSeek AI 官方产品。
+## 它能做什么
 
-本文描述 **1.2.1**。已发布变更见[更新日志](CHANGELOG.zh-CN.md)。
+- **所有来源合成一份列表。** 技能按所属 Agent 分组，支持折叠、搜索、筛选和详情查看。分类只记在来源里，不会移动磁盘上的文件。
+- **全局与项目两个范围。** 项目页列出 DSH 里任一已登记工作区的技能，布局与全局技能一致。同名技能同时存在时，以项目副本为准。
+- **启停不碰你的文件。** 启用或停用只改变 DSH 的解析结果，Codex、Claude Code、Copilot 等目录里的源文件原样不动。
+- **创建与导入。** 可以从零新建技能，也可以导入 ZIP 压缩包、文件夹或单个 `SKILL.md`，写入用户目录（DSH skills 或公共 Agent）或某个已登记工作区。
+- **从仓库安装。** 添加公开 GitHub 仓库，浏览其中的技能，安装前预览将要写入的内容，逐个安装且不覆盖本地已有文件。
+- **每次改动都可先看后做。** 仓库更新以文件级差异呈现，本地修改会被识别并保护，每次替换都留一份可回退的备份。
+- **先回收再删除。** 删除 DSH 技能先进回收站；恢复时连同安装位置和仓库来源一起还原。
 
-## 功能概览
+## 环境要求
 
-把散落在本机和项目中的技能集中到 DSH，无需在多个 Agent 目录间来回查找。
-
-- **统一管理**：按来源分组，搜索技能、查看正文，一键启用或停用。分类记在来源里，不移动文件。
-- **区分全局与项目**：项目页在顶部下拉选择已登记工作区，下方按来源显示该工作区的技能，列表样式与全局技能一致；同名技能优先使用项目副本。
-- **复用已有技能**：支持 Codex、Claude Code、Copilot 等常见 Agent，启停不会修改它们的源文件。
-- **创建与导入**：新建技能，或导入 ZIP、技能文件夹和 `SKILL.md`，保存到用户目录（默认）或已登记工作区。用户目录支持 DSH skills 与 Shared Agent。
-- **回收与恢复**：删除 DSH 技能后先进入回收站，误删可找回。
-- **技能仓库**：添加公开 GitHub 仓库，按来源折叠浏览、搜索、查看详情并逐项安装；同名不覆盖，刷新不自动更新本地。
-
-
-- **来源追踪与更新**：区分本机和仓库安装，预览文件差异，保护本地修改，确认后备份更新并可恢复上一版。
-
-## 界面预览
-
-技能管理：
-
-![技能管理完整界面](assets/screenshots/skills-manager-v2-preview.webp)
-
-技能仓库：
-
-![技能仓库浏览与安装](assets/screenshots/skill-repositories.webp)
-
-*截图来自 1.0.0 发布前的 0.1.54 本地测试版，展示全局技能和技能仓库；最终版补充了刷新动画及进度提示。截图仅保留功能面板，已裁去背景中的真实文件名与项目目录，采用无损 WebP。*
+- 已安装并能正常运行 DeepSeek Harness。
+- 一个用来安装插件的 DSH profile。下文示例使用 `web`，请替换成你实际使用的 profile。
 
 ## 安装
 
-需要已安装并能正常运行 DeepSeek Harness。以下命令使用 `web` profile，请按实际环境替换。
+仓库里已包含可直接运行的 `lib`，以下三种方式都不需要先构建。
 
-支持从本仓库的 Git 地址、本地检出目录或本地构建的 `.tgz` 包安装。仓库里已包含可直接运行的 `lib`，用 Git 安装无需构建。改动源码后，提交前请先运行构建。
-
-### 让 Agent 帮你安装
-
-把这段话发给能够操作本机终端的 Agent：
-
-```text
-请把 https://github.com/Guojing6/dsh-skills-manager 这个插件安装到我的 DSH web profile，安装后确认生效并告诉我如何重新加载。
-```
-
-### 手动安装
+### 从 Git 安装
 
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -68,48 +37,65 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.git
 ```
 
-安装后重启 DSH 并刷新页面，点击侧栏的「技能」（在「插件」下方）即可使用。
+### 从本地检出目录或打包好的 tarball 安装
 
-`dsh plugin` 会把参数转发给 pnpm，因此本地检出目录或打包好的 `.tgz` 也可以同样安装：
+`dsh plugin` 会把参数原样交给 pnpm，因此 pnpm 能识别的来源都可以：
 
 ```powershell
 dsh plugin --profile web add E:\path\to\dsh-skills-manager
 dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
 ```
 
-更新时重新拉取仓库并再次执行安装命令。标题区的「检查更新」依赖 npm 包，本仓库不发布 npm 包，因此检测不到新版本。
+### 交给 Agent 安装
+
+把下面这段话发给能操作本机命令的 Agent：
+
+```text
+请把 https://github.com/Guojing6/dsh-skills-manager 这个插件安装到我的 DSH web profile，安装后确认生效并告诉我如何重新加载。
+```
+
+安装完成后重启 DSH、刷新页面，在侧栏点击「技能」即可——它就在「插件」正下方。
 
 - `1.2.1` 已验证兼容 DeepSeek Harness `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`。
 
-## 使用说明
+### 更新
 
-| 你想做什么 | 如何操作 |
+重新拉取仓库后再执行一次安装命令即可。面板标题区的更新入口会去 npm registry 查同名包，而本仓库只走 Git、不发布 npm 包，因此该入口不会发现新版本。
+
+## 面板怎么用
+
+| 你想做什么 | 怎么操作 |
 | --- | --- |
-| 查找技能 | 选择全局或项目页签，展开来源分组，或使用搜索和筛选。 |
-| 查看内容 | 点击「查看详情」，阅读技能正文及来源信息。 |
-| 控制启停 | 切换技能开关；只影响 DSH，不改动源文件。 |
-| 添加技能 | 点击「创建技能」或「导入技能」，左侧下拉选择「用户目录」（默认）或「指定工作区」，右侧下拉选择位置或已登记工作区，并核对下方路径。工作区副本会写进该项目的 `.dsh/skills`，可能被提交到仓库。 |
-| 从仓库安装 | 打开「技能仓库 → 添加仓库」，填写公开 GitHub 地址，扫描后点击「安装」，使用同一组并排下拉选择范围及位置或工作区，核对下方实际路径并确认。 |
-| 卸载仓库技能 | 点击红色「卸载」并确认。已登记工作区里的副本也同样可以卸载。已安装的文件夹及本地修改移入「回收站」，随后可以重新安装。 |
-| 更新仓库技能 | 点击「刷新并检查更新」，再「查看更新」预览文件差异，确认备份后更新。 |
-| 恢复更新前版本 | 对有备份的技能点击「恢复上一版」，预览并确认。 |
-| 找回误删 | 打开「回收站」恢复。 |
+| 浏览和搜索 | 选择全局或项目页签，展开来源分组，或使用搜索与筛选。 |
+| 查看某个技能 | 点击「查看详情」，查看技能正文及其来源。 |
+| 启用或停用 | 切换技能开关。只改变 DSH 的解析结果，不改动任何源文件。 |
+| 创建或导入技能 | 点击「创建技能」或「导入技能」，再用左右两个并排下拉：左侧选「用户目录」（默认）或「指定工作区」，右侧选具体位置或已登记工作区。确认前先核对下方显示的写入路径。写入工作区时会落到 `<项目根>/.dsh/skills`，有可能被提交进该项目仓库。 |
+| 从仓库安装技能 | 打开「技能仓库 → 添加仓库」，填入公开 GitHub 地址，扫描后点击「安装」，用同一组下拉选择范围与位置，核对路径后确认。 |
+| 卸载仓库技能 | 点击红色「卸载」。已登记工作区里的副本同样可以这样卸载。文件夹及本地修改会移入回收站，「安装」按钮重新可用。 |
+| 更新仓库技能 | 点击「刷新并检查更新」，再点「查看更新」查看差异，然后确认备份与替换。 |
+| 回退某次更新 | 对留有备份的技能点击「恢复上一版」，预览后确认。 |
+| 找回误删的技能 | 打开「回收站」恢复。 |
 
-- **按已登记工作区查看**：项目页顶部下拉列出 DSH 里已登记的工作区，选中后只读取并显示这一项的技能，搜索也只针对所选工作区。Git 仓库使用最近的 Git 根目录；普通文件夹使用工作区目录，无需 `git init`。没有技能的工作区也可选择，失效目录不可选。
-- **同名技能独立启停**：停用项目副本后，其他已启用副本仍可接管，页面会提示实际来源。要完全关闭该技能，需停用全部副本。
-- **文件管理范围**：DSH 来源的技能可从管理页移入回收站；从仓库安装到 DSH、公共 Agent 或已登记工作区的副本也可从「技能仓库」卸载。Codex、Claude 等其他外部技能仍只读。创建、文件导入和仓库安装可以写入用户目录下的 DSH skills 或公共 Agent（Shared Agent），也可以写入某个已登记工作区的 `.dsh/skills`。创建、导入和安装时，工作区不会被预先选中，也不能选 Shared Agent；项目页的只读查看选择不作为写入目标。
-- **恢复**：已卸载副本的仓库来源绑定到具体回收站条目；仅显式恢复后重新启用来源、安装位置和更新/恢复历史。其他同名技能不会继承仓库管理权限。卸载公共 Agent 副本会影响使用该目录的所有 Agent。
+几条规则决定了面板显示什么、又能写到哪里：
 
-### 仓库使用边界
+- **工作区。** 项目页下拉列出 DSH 里已登记的工作区，只有选中的那个会被扫描、显示和搜索。Git 仓库解析到最近的 Git 根目录，普通文件夹直接用工作区目录，因此不需要 `git init`。没有技能的工作区仍可选，已失效的目录会被禁用。
+- **同名副本。** 停用项目副本后，其他已启用的副本会接管，面板会标明实际生效的来源。要彻底关闭某个技能，需要停用它的全部副本。
+- **写入范围。** 创建、导入和仓库安装可以写入用户目录下的 DSH skills、公共 Agent，或某个已登记工作区的 `<项目根>/.dsh/skills`。这两类操作都不会预先选中工作区，工作区也不能选公共 Agent。在项目页选择工作区只影响你正在看的内容，不是写入目标。
+- **回收站与来源。** 已卸载副本的仓库来源绑定在具体的回收站条目上，只有显式恢复才会连同安装位置、更新/回退历史一起恢复。另一个同名技能不会继承这份仓库管理关系。
+- **公共 Agent。** 卸载公共 Agent 里的副本会影响所有读取该目录的 Agent。
+- **外部 Agent。** 下方表格中 Codex、Claude Code、Copilot 等目录里的技能在本插件里都是只读的。
 
-- 标题区「检查更新」更新插件自身；仓库区「刷新并检查更新」检查技能内容，不自动安装或替换。刷新时显示当前仓库、数量和动画。
-- 仓库安装可以写入用户目录下的 DSH skills 或公共 Agent（`~/.agents/skills`，可用 `DSH_AGENTS_HOME` 覆盖），也可以写入已登记工作区的 `<项目根>/.dsh/skills`。选择器显示实际配置路径，并禁用不安全路径；缺少的目录仅在确认安装后创建。不能安装到 Codex、Claude 等其他 Agent 目录，也不允许任意路径、未登记项目目录或插件托管缓存写入。旧安装记录未指定位置时默认使用 DSH；更新与恢复上一版沿用记录的位置。仅支持公开 GitHub，不提供私有凭证或自动更新。移除订阅保留已安装技能。
-- 归档上限 32 MiB，指定子目录也需下载整库。扫描失败保留上次目录；缓存损坏时重新刷新。
-- 更新前检测本地修改，覆盖必须明确确认；历史备份不自动清理，磁盘用量会增加。
+## 仓库安装的边界
+
+- 标题区的「检查更新」更新的是插件本身；仓库区的「刷新并检查更新」只检查技能内容，不会自动安装或替换，扫描过程中会显示当前仓库和进度。
+- 安装目标是用户目录下的 DSH skills 或公共 Agent（`~/.agents/skills`，可用 `DSH_AGENTS_HOME` 覆盖），或已登记工作区的 `<项目根>/.dsh/skills`。选择器会显示解析后的路径并禁用不安全的路径，目录不存在时也只在你确认后才创建。不能选择 Codex、Claude Code 等其他 Agent 目录，也不允许任意路径、未登记的项目目录或插件托管的缓存。旧版本留下、未记录安装位置的条目按 DSH 处理，更新和回退沿用记录中的位置。
+- 只支持公开 GitHub 仓库，不提供私有凭证，也没有自动更新。移除订阅不会删除已安装的技能。
+- 压缩包上限 32 MiB，按子目录筛选时同样适用。扫描失败会保留上一次的目录；缓存损坏需要重新刷新。
+- 替换前一定会检测本地修改并要求明确确认。历史备份不会自动清理，会额外占用磁盘空间。
 
 ## 支持的 Agent 目录
 
-`~` 表示用户主目录，`<project>` 表示已登记工作区的项目根。表中为默认路径；设置了对应 DSH 目录变量时，以配置为准。
+`~` 表示用户主目录，`<project>` 表示已登记工作区的项目根。表中为默认路径；设置了对应的 DSH 目录变量时以配置为准。不存在的外部目录不会显示。
 
 | 来源 | 全局目录 | 项目目录 |
 | --- | --- | --- |
@@ -133,20 +119,26 @@ dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
 | Qoder CN CLI | `~/.qoder-cn/skills` | — |
 | Qoder CN | `~/.lingma/skills` | `<project>/.lingma/skills` |
 
-不扫描普通项目根目录的 `<project>/skills`，避免把仓库的发布资源当作 Agent 技能。OpenClaw / Clawdbot 仅保留上表中的用户级来源。Qoder CN CLI 的项目技能在 `<project>/.qoder/skills`，显示为 Qoder。Qoder CN IDE 使用 Lingma 目录。不存在的外部来源目录不会显示。
+项目根下普通的 `<project>/skills` 目录不会被扫描，避免把仓库自己的发布资源当成 Agent 技能。OpenClaw / Clawdbot 只支持上表中的用户级来源。Qoder CN CLI 的项目技能位于 `<project>/.qoder/skills`，显示为 Qoder；Qoder CN IDE 使用 Lingma 目录。
+
+## 开发
+
+`src` 中是严格 TypeScript，插件架构未改动。
+
+- `npm run typecheck`——只做类型检查。
+- `npm run build`——重新生成 `lib` 下的运行产物（这些产物会入库）。
+- `npm run verify`——宿主元数据同步检查、完整回归、发包检查和干净目录打包测试。
+
+由于 `lib` 已入库，用 Git 安装时无需构建。改过 `src` 后请在提交前运行构建；打包时也会先检查类型并生成运行产物。CI 在 Node.js 22.19.0 和 24 上执行完整验证，源码改动还会触发受支持宿主的兼容矩阵。欢迎提交改进。
+
+想在自己机器上试跑源码：用项目固定版本的 pnpm 安装依赖，执行 `npm run verify`，再执行 `npm pack`；用 `dsh plugin --profile web add <package.tgz>` 安装生成的 `.tgz`，重启 DSH 并刷新页面。打包时不要加 `--ignore-scripts`，否则会跳过构建钩子。
+
+有问题或建议请[提交 Issue](https://github.com/Guojing6/dsh-skills-manager/issues)，并附上 DSH 与插件版本、复现步骤；界面问题请附完整截图。
 
 ## 来源声明
 
 本项目基于 [MichengAI/dsh-skills-manager](https://github.com/MichengAI/dsh-skills-manager) 二次开发，现独立维护。
 
-## 反馈与贡献
-
-遇到问题或有建议，欢迎[提交 Issue](https://github.com/Guojing6/dsh-skills-manager/issues)。请附上 DSH 与插件版本、复现步骤；界面问题可附完整截图。
-
-源码位于 `src`，使用严格 TypeScript，保留现有插件架构。开发时执行 `npm run typecheck` 检查类型，`npm run build` 生成运行产物，`npm run verify` 执行完整回归与打包验证。仓库里已包含可直接运行的 `lib`。改动源码后，提交前请先运行构建。打包前仍会自动检查类型并构建，打包产物仍包含所需 JavaScript 产物。CI 在 Node.js 22.19.0 和 24 上执行完整验证，代码改动也会自动触发受支持宿主兼容矩阵。欢迎提交改进。
-
-从源码制作测试包时，使用项目固定版本的 pnpm 安装依赖，执行 `npm run verify`，再执行 `npm pack`。用 `dsh plugin --profile web add <package.tgz>` 安装生成的 `.tgz`，重启 DSH 并刷新页面。打包时不要使用 `--ignore-scripts`，否则会跳过构建钩子。
-
 ## 许可证
 
-[MIT License](LICENSE)
+[MIT](LICENSE)

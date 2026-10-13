@@ -1,66 +1,35 @@
-<p align="center">
-  <img src="assets/branding/dsh-banner-en.webp" alt="DSH Skills Manager" width="100%">
-</p>
-
-<div align="center">
-
 # DSH Skills Manager
 
-  **Manage local and project skills, install from GitHub, preview updates and restore backups**
+DSH Skills Manager collects every Agent Skill on your machine into one panel inside DeepSeek Harness: skills already installed for Codex, Claude Code, Copilot and a dozen other agents, skills kept in DSH itself, and skills you pull from public GitHub repositories. Search, read, toggle, import, install, update and roll back without leaving DSH or hand-editing another agent's folder.
 
-  [简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [MIT](LICENSE)
+This is a community-maintained plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), not an official DeepSeek AI product.
 
-  [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-  [![GitHub](https://img.shields.io/badge/GitHub-Guojing6%2Fdsh--skills--manager-181717.svg)](https://github.com/Guojing6/dsh-skills-manager)
-  [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/Guojing6/dsh-skills-manager)
-  [![DSH supported through 0.2.1-alpha.2](https://img.shields.io/badge/DSH-up%20to%200.2.1--alpha.2-2563eb.svg)](#installation)
-</div>
+- Version: `1.2.1`
+- Repository: <https://github.com/Guojing6/dsh-skills-manager>
+- Issues: <https://github.com/Guojing6/dsh-skills-manager/issues>
+- Changelog: [English](CHANGELOG.md) · [中文](CHANGELOG.zh-CN.md)
+- License: [MIT](LICENSE)
 
-> DSH Skills Manager is a community-maintained DeepSeek Harness (DSH) plugin, not an official DeepSeek AI product.
+## What it does
 
-This README describes **1.2.1**. Released changes are in the [changelog](CHANGELOG.md).
+- **Every source in one list.** Skills are grouped by the agent that owns them, with collapsible groups, search, filters and a detail view. Categories are stored per source and never move files on disk.
+- **Global and project scopes.** The project tab lists the skills of any workspace registered in DSH, using the same grouped layout as global skills. When the same skill exists in both scopes, the project copy wins.
+- **Toggles that leave files alone.** Enabling or disabling a skill only changes how DSH resolves it. The file in Codex, Claude Code, Copilot or any other supported agent folder stays untouched.
+- **Create and import.** Start a skill from scratch, or import a ZIP archive, a folder or a single `SKILL.md`. Write it to your user directory (DSH skills or Shared Agent) or into a registered workspace.
+- **Repository installs.** Add a public GitHub repository, browse its skills, preview exactly what an install would write, and install skill by skill without overwriting local files.
+- **Review before every change.** Repository updates are shown as file-level diffs, local edits are detected and protected, and each replacement keeps a backup you can restore.
+- **Trash first.** Deleting a DSH skill moves it to Trash. Restoring it brings back both its destination and its repository provenance.
 
-## Features
+## Requirements
 
-
-Bring skills from your computer and projects into DSH without switching between Agent folders.
-
-- **Manage in one place**: browse collapsible source groups, search, read, and toggle skills. Categories group skills inside a source and do not move files.
-- **Global and project skills**: select a registered workspace from the project tab dropdown. Its skills use the same source-group layout as global skills. Project copies take priority over global copies.
-- **Reuse existing skills**: supports Codex, Claude Code, Copilot, and other agents without modifying their source files when toggled.
-- **Create and import**: create a skill or import ZIP archives, folders, and `SKILL.md` files into your user directory (default) or a registered workspace. User-level writes can go to DSH skills or Shared Agent.
-- **Skill repositories**: discover public GitHub skills, install without overwriting local files, review updates and restore backups.
-- **Recover deleted skills**: DSH skills go to Trash first, so accidental deletions can be restored.
-
-- **Source tracking and updates**: distinguish local and repository skills, preview file changes, protect local edits, and confirm backup, update or rollback.
-
-## Screenshots
-
-Skill management:
-
-![Full skill management view](assets/screenshots/skills-manager-v2-preview.webp)
-
-Skill repositories:
-
-![Browse and install repository skills](assets/screenshots/skill-repositories.webp)
-
-*Screenshots show the pre-release 0.1.54 local build used to prepare 1.0.0. The final version adds refresh animation and progress feedback. Screenshots show only the feature panels, with real filenames and project directories cropped out of the background, and use lossless WebP.*
+- A working DeepSeek Harness installation.
+- A DSH profile to install into. The examples below use `web`; substitute the profile name you actually run.
 
 ## Installation
 
-Requires a working DeepSeek Harness installation. The commands below use the `web` profile; replace it with yours if needed.
+The repository ships a ready-to-run `lib`, so none of these routes needs a build step.
 
-Install it from this Git repository, a local checkout, or a locally built `.tgz` package. The repository already contains a ready-to-run `lib`, so a Git install needs no build step. After changing source, run the build before committing.
-
-### Ask an agent to install it
-
-Send this to an agent that can use your local terminal:
-
-```text
-Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skills-manager into my DSH web profile, then confirm it is active and explain how to reload DSH.
-```
-
-### Install manually
+### From Git
 
 ```powershell
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -68,46 +37,65 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.git
 ```
 
-`dsh plugin` forwards its arguments to pnpm, so a local checkout or a packed `.tgz` installs the same way:
+### From a local checkout or a packed tarball
+
+`dsh plugin` hands its arguments straight to pnpm, so any source pnpm understands works:
 
 ```powershell
 dsh plugin --profile web add E:\path\to\dsh-skills-manager
 dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
 ```
 
-Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plugins**). To update, pull the repository and run the installation command again. The header update banner checks an npm package, and this Git-only distribution does not publish one, so it cannot find a newer version.
+### By asking an agent
+
+Paste this into an agent that can run commands on this machine:
+
+```text
+Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skills-manager into my DSH web profile, then confirm it is active and explain how to reload DSH.
+```
+
+Then restart DSH, refresh the page, and open **Skills** in the sidebar — it sits directly below **Plugins**.
 
 - Plugin `1.2.1` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
 
-## Usage
+### Updating
+
+Pull the repository again and re-run the install command. The update entry in the panel header looks for a package of the same name on the npm registry; this distribution is Git-only and publishes nothing there, so that entry will not find a newer version.
+
+## Using the panel
 
 | What you want to do | How |
 | --- | --- |
-| Find a skill | Choose Global or Project, expand a source group, or use search and filters. |
-| Read its contents | Select **View details** for the skill body and source information. |
-| Enable or disable | Toggle the skill switch. This affects DSH without editing source files. |
-| Add a skill | Select **Create skill** or **Import skill**, then use the side-by-side dropdowns: choose **User directory** (default) or **Specific workspace** on the left, and a location or registered workspace on the right. Check the destination path below. A workspace copy is written to that project's `.dsh/skills` and may be committed to its repository. |
-| Install from a repository | Open **Repositories → Add repository**, enter a public GitHub URL, scan, click **Install**, use the same side-by-side dropdowns to choose the scope and location or workspace, check the destination path below, and confirm. |
-| Uninstall a repository skill | Click the red **Uninstall** button and confirm. This includes copies in a registered workspace. The installed folder and local edits move to **Trash**, and **Install** becomes available again. |
-| Update repository skills | Select **Refresh & check updates**, then **Review update** to inspect changes and confirm backup and update. |
-| Roll back an update | Select **Restore previous version** for a skill with a backup, preview and confirm. |
+| Browse and search | Pick Global or Project, expand a source group, or use search and filters. |
+| Read a skill | Open **View details** for the skill body and where it came from. |
+| Turn a skill on or off | Flip its switch. Only DSH resolution changes; no source file is edited. |
+| Create or import a skill | Choose **Create skill** or **Import skill**, then use the two side-by-side dropdowns: **User directory** (default) or **Specific workspace** on the left, and the location or registered workspace on the right. Check the destination path shown below before you confirm. A workspace copy goes to `<project>/.dsh/skills` and may end up committed to that project. |
+| Install from a repository | Open **Repositories → Add repository**, paste a public GitHub URL, scan, press **Install**, choose the scope and destination with the same dropdowns, verify the path, confirm. |
+| Uninstall a repository skill | Press the red **Uninstall** button. Copies inside registered workspaces can be uninstalled the same way. The folder and any local edits move to Trash, and **Install** becomes available again. |
+| Update from a repository | Press **Refresh & check updates**, then **Review update** to inspect the diff before backup and replacement. |
+| Roll an update back | Press **Restore previous version** on any skill that has a backup, preview it, confirm. |
 | Recover a deletion | Open **Trash** and restore. |
 
-- **Registered workspaces**: select a registered workspace from the project tab dropdown. Only that workspace is scanned, displayed and searched. Git repositories use the nearest Git root; other folders use the workspace directory, so no `git init` is required. Empty workspaces remain selectable; unavailable directories are disabled.
-- **Independent copies**: disabling a project copy allows another enabled copy to take over, and the panel identifies the active source. Disable all copies to turn the skill off completely.
-- **File management**: DSH skills can move to Trash from the general manager. Repository-installed copies in DSH, Shared Agent, or a registered workspace can also be uninstalled from **Repositories**. Codex, Claude and other external skills remain read-only. Creation, file import and repository install can write to DSH skills or Shared Agent in your user directory, or to a registered workspace's `.dsh/skills`. Creation, import and installation never preselect a workspace, and Shared Agent is not available for workspaces. The project tab viewing selection is not a write destination.
-- **Restore**: retired repository provenance belongs to the specific Trash entry and is reactivated only by an explicit restore, including the destination and update/rollback history. A different same-name skill does not inherit repository management. Uninstalling a Shared Agent copy affects every agent using that directory.
+A few rules decide what the panel shows and what it is allowed to write:
 
-### Repository boundaries
+- **Workspaces.** The project tab dropdown lists the workspaces registered in DSH. Only the selected one is scanned, displayed and searched. Git repositories resolve to their nearest Git root; plain folders use the workspace directory itself, so `git init` is not required. Workspaces without skills stay selectable, and directories that no longer exist are disabled.
+- **Same-name copies.** Disabling a project copy lets another enabled copy take over, and the panel names the source that is actually active. Disabling every copy is what turns the skill off completely.
+- **Write destinations.** Creation, import and repository install can target user-level DSH skills, Shared Agent, or `<project>/.dsh/skills` of a registered workspace. Neither flow preselects a workspace, and Shared Agent is not offered for workspaces. Selecting a workspace on the project tab only affects what you are viewing.
+- **Trash and provenance.** A retired repository source sticks to the individual Trash entry and comes back only through an explicit restore, together with its destination and its update/rollback history. A different skill that happens to share the name does not inherit repository management.
+- **Shared Agent.** Uninstalling a Shared Agent copy affects every agent that reads that directory.
+- **External agents.** Skills discovered in Codex, Claude Code, Copilot and the other agent folders listed below are read-only here.
 
-- The header **Check for updates** updates the plugin itself. Repository **Refresh & check updates** checks skill contents without installing or replacing them; it shows animation, counts and the current repository.
-- Repository installation writes to user-level DSH skills or Shared Agent (`~/.agents/skills`, overridable with `DSH_AGENTS_HOME`), or to a registered workspace's `<project>/.dsh/skills`. The chooser shows the configured path and disables unsafe paths; a missing directory is created only after confirmation. Codex, Claude and other agent directories cannot be selected. Arbitrary paths, unregistered project destinations and plugin-managed caches are not writable. Missing destinations in legacy records default to DSH; updates and rollback follow the recorded destination. Public GitHub repositories are supported; private credentials and automatic updates are not. Removing a subscription keeps installed skills.
-- Archives are limited to 32 MiB, including when filtering by subdirectory. Failed scans preserve the previous catalog; corrupt caches require refresh.
-- Local edits require explicit confirmation before replacement. Historical backups are not automatically cleaned and consume additional disk space.
+## Repository installs: the limits
 
-## Supported Agent directories
+- The header **Check for updates** updates the plugin itself. The repository **Refresh & check updates** only inspects skill contents: it never installs or replaces anything, and during a scan it shows the current repository and progress.
+- Installations go to user-level DSH skills or Shared Agent (`~/.agents/skills`, overridable with `DSH_AGENTS_HOME`), or to `<project>/.dsh/skills` of a registered workspace. The chooser displays the resolved path and disables unsafe ones; a missing directory is created only after you confirm. Codex, Claude Code and other agent directories cannot be selected, and neither can arbitrary paths, unregistered project destinations or plugin-managed caches. Records from older versions that carry no destination fall back to DSH, and updates and rollbacks follow the recorded destination.
+- Only public GitHub repositories are supported. There are no private credentials and no automatic updates. Removing a subscription keeps the skills it installed.
+- Archives are capped at 32 MiB, which also applies when you filter by subdirectory. A failed scan keeps the previous catalog; a corrupt cache needs a refresh.
+- Local edits always require explicit confirmation before they are replaced. Historical backups are never cleaned up automatically and take extra disk space.
 
-`~` means your home directory; `<project>` is the project root of a registered workspace. These are default paths; configured DSH directory variables take precedence.
+## Supported agent directories
+
+`~` is your home directory and `<project>` is the project root of a registered workspace. The paths below are defaults; configured DSH directory variables take precedence. External directories that do not exist are not shown.
 
 | Source | Global directory | Project directory |
 | --- | --- | --- |
@@ -131,20 +119,26 @@ Restart DSH, refresh the page, and select **Skills** in the sidebar (below **Plu
 | Qoder CN CLI | `~/.qoder-cn/skills` | — |
 | Qoder CN | `~/.lingma/skills` | `<project>/.lingma/skills` |
 
-Ordinary project-root `<project>/skills` directories are not scanned, so repository release resources are not exposed as Agent skills. OpenClaw / Clawdbot support is limited to the user-level sources above. Qoder CN CLI project skills use `<project>/.qoder/skills` and appear as Qoder. Qoder CN IDE uses the Lingma directories. Missing external source directories are not shown.
+A plain `<project>/skills` directory at the project root is deliberately not scanned, so a repository's own release assets never show up as Agent skills. OpenClaw / Clawdbot support covers the user-level sources only. Qoder CN CLI keeps its project skills in `<project>/.qoder/skills` and appears as Qoder; the Qoder CN IDE uses the Lingma directories.
+
+## Development
+
+`src` holds strict TypeScript and the plugin architecture is unchanged.
+
+- `npm run typecheck` — type checks only.
+- `npm run build` — regenerates the runtime files in `lib`, which are committed.
+- `npm run verify` — host metadata sync check, the full regression suite, the package check and a clean-directory pack test.
+
+Because `lib` is committed, a Git install runs without building. After changing `src`, run the build before committing; packing checks types and builds the runtime files too. CI runs full verification on Node.js 22.19.0 and 24, and source changes also run the supported-host compatibility matrix. Contributions are welcome.
+
+To try a source checkout: install dependencies with the pinned pnpm version, run `npm run verify`, then `npm pack`. Install the resulting `.tgz` with `dsh plugin --profile web add <package.tgz>`, restart DSH and refresh the page. Do not pass `--ignore-scripts` when packing — it skips the build hook.
+
+Report bugs and suggestions in the [issue tracker](https://github.com/Guojing6/dsh-skills-manager/issues); include your DSH and plugin versions, the steps to reproduce, and a full screenshot for UI problems.
 
 ## Attribution
 
 This project is a derivative of [MichengAI/dsh-skills-manager](https://github.com/MichengAI/dsh-skills-manager) and is now independently maintained.
 
-## Feedback and contributions
-
-[Open an issue](https://github.com/Guojing6/dsh-skills-manager/issues) for bugs or suggestions. Include your DSH and plugin versions, reproduction steps, and a full screenshot for UI issues.
-
-Source code lives in `src` and uses strict TypeScript while retaining the existing plugin architecture. Run `npm run typecheck` for type checks, `npm run build` to generate runtime files, and `npm run verify` for the full regression and package checks. The repository includes a ready-to-run `lib`. After changing source, run the build before committing. Packing still checks types and builds the JavaScript files required by the packaged output. CI runs full verification on Node.js 22.19.0 and 24, and code changes also trigger the supported-host compatibility matrix. Contributions are welcome.
-
-To test a source checkout, install dependencies using the pinned pnpm version, run `npm run verify`, then run `npm pack`. Install the resulting `.tgz` with `dsh plugin --profile web add <package.tgz>`, restart DSH and refresh the page. Do not use `--ignore-scripts` when packing: it skips the build hook.
-
 ## License
 
-[MIT License](LICENSE)
+[MIT](LICENSE)
