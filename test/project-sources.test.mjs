@@ -229,7 +229,7 @@ try {
   await core.setSkillEnabled(root, "same", true);
   assert.equal((await core.setSourceEnabled(root.key, false, undefined, { projectCwds: [project] })).enabled, false);
   assert.equal((await core.readManagerState()).state.sources[root.key], false);
-  assert.equal((await core.listProviderCandidates({ cwd: project })).find((c) => c.name === "project-copilot").invocation.modelInvocable, false, "项目来源总开关写入 manager 状态");
+  assert.equal((await core.listProviderCandidates({ cwd: project })).some((c) => c.name === "project-copilot"), false, "关闭的项目外部来源不贡献遮蔽候选");
   const validState = (await core.readManagerState()).state;
   for (const invalid of ["false", 0, null, {}, []]) {
     const broken = structuredClone(validState);
