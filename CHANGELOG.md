@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased
+## 1.1.18 - 2026-10-13
 
+- Visual and brand enhancements: integrate official brand logos for ecosystem sources (DSH, WorkBuddy, CC Switch, Codex, Qoder, Cursor, Claude Code, etc.), remove redundant collapse arrows on source cards, and preserve full paths.
+- Category UX improvements: collapse category folders by default (expand automatically when searching), add modal for batch-assigning skills with descriptions and search, and support HTML5 drag-and-drop categorization within the same source.
+- Source toggle: wire DSH source toggle in persistence and policy layers to align with external sources.
+- List streamlining: automatically hide empty external read-only sources in the global view and dropdown selector.
+- Repository view: format branch label as default branch and style commit SHA with monospace badge and spacing.
 - Disabled external sources no longer hide same-name bundled skills from enabled plugins. Native-source blocking and explicit per-skill disables remain effective, including mixed disabled-source groups (#33, #34).
 
 ## 1.1.17 - 2026-10-12
