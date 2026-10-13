@@ -1351,7 +1351,7 @@ function defaultManagerState(): ManagerState {
   const disabledSkills: ManagerState["disabledSkills"] = Object.create(null);
   const enabledSkills: ManagerState["enabledSkills"] = Object.create(null);
   for (const root of userRoots()) {
-    if (root.key !== "dsh") sources[root.key] = true;
+    sources[root.key] = true;
     disabledSkills[root.key] = [];
     enabledSkills[root.key] = [];
   }
@@ -1404,7 +1404,10 @@ function validManagerStateDocument(value: ManagerState) {
   )
     return false;
   for (const root of userRoots()) {
-    if (root.key === "dsh") continue;
+    if (root.key === "dsh") {
+      if (value.sources.dsh !== undefined && typeof value.sources.dsh !== "boolean") return false;
+      continue;
+    }
     if (typeof value.sources[root.key] !== "boolean") return false;
     const list = value.disabledSkills[root.key];
     if (!Array.isArray(list) || list.some((name) => !validStateSkillName(name)))
@@ -1458,7 +1461,6 @@ function normalizeManagerState(value: ManagerState) {
     return normalized;
   for (const root of userRoots()) {
     if (
-      root.key !== "dsh" &&
       value.sources &&
       typeof value.sources[root.key] === "boolean"
     )
@@ -1594,7 +1596,6 @@ function effectiveSkillPolicy(policyResult: PolicyResult, root: SkillRoot, entry
     entry.policyAliases,
   );
   const sourceEnabled =
-    root.key === "dsh" ||
     root.kind === "project-dsh" ||
     policyResult.state.sources[root.key] !== false;
   if (policyResult.writable === false || !sourceEnabled || override === false) {

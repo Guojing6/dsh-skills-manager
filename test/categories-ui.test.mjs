@@ -129,6 +129,34 @@ try {
   const rename = nodes(work).find((node) => node.props["aria-label"] === t("category.rename"));
   const remove = nodes(work).find((node) => node.props["aria-label"] === t("category.delete"));
   assert.ok(rename && rename.props.icon && remove && remove.props.icon, "重命名和删除分类是图标");
+  const add = nodes(work).find((node) => node.props["aria-label"] === t("category.addSkills"));
+  assert.ok(add && add.props.icon, "批量归入是图标");
+
+  // 点击批量添加弹窗测试：连续打开分类 1 和分类 2，验证状态隔离
+  add.props.onClick();
+  render();
+  const addModal = find(node => node.props?.title === t("category.selectSkills", { name: "工作" }));
+  assert.ok(addModal, "能弹出选择归类弹窗");
+  assert.ok(nodes(addModal).some(node => node.props.className === "dssm-batch-item" && textOf(node).includes("loose")), "可选列表中包含未归类的 loose 技能");
+
+  // 勾选 loose
+  const looseItem = nodes(addModal).find(node => node.props.className === "dssm-batch-item" && textOf(node).includes("loose"));
+  looseItem.props.onClick();
+  render();
+  let addModalAfterCheck = find(node => node.props?.title === t("category.selectSkills", { name: "工作" }));
+  assert.ok(nodes(addModalAfterCheck).some(node => node.props.className === "dssm-batch-item selected"), "选中项展示激活态");
+
+  // 关闭弹窗
+  nodes(addModalAfterCheck).find(node => node.children?.includes(t("btn.cancel")) && node.props?.onClick).props.onClick();
+  render();
+
+  // 再次打开该弹窗，检查之前勾选的状态已被重置清空，不发生残留
+  add.props.onClick();
+  render();
+  const addModalReopened = find(node => node.props?.title === t("category.selectSkills", { name: "工作" }));
+  assert.equal(nodes(addModalReopened).some(node => node.props.className === "dssm-batch-item selected"), false, "重新打开弹窗勾选已被重置");
+  nodes(addModalReopened).find(node => node.children?.includes(t("btn.cancel")) && node.props?.onClick).props.onClick();
+  render();
   assert.ok(nodes(work).some((node) => node.props.className === "dssm-skill-desc" && node.children[0] === "DESC_kept"), "第二行只有描述");
   assert.equal(nodes(work).some((node) => node.props.className === "dssm-row-source"), false, "技能行不再另起来源标签");
   const keptToggle = nodes(work).find((node) => node.props["aria-label"] === t("skill.toggle") + " kept");

@@ -887,6 +887,23 @@ ok(
 );
 await setSourceEnabled("cursor", true);
 
+await setSourceEnabled("dsh", false);
+const disabledDshSource = (await listProviderCandidates()).find(
+  (item) => item.source === "user-dsh",
+);
+ok(
+  disabledDshSource &&
+    disabledDshSource.invocation.userInvocable === false,
+  "DSH source supports manager-local source disable",
+);
+const dshRootViewDisabled = (await state()).roots.find((r) => r.key === "dsh");
+ok(dshRootViewDisabled && dshRootViewDisabled.enabled === false, "dsh root view reports disabled");
+ok((await readManagerState()).state.sources.dsh === false, "sources.dsh is written to state.json");
+await setSourceEnabled("dsh", true);
+const dshRootViewEnabled = (await state()).roots.find((r) => r.key === "dsh");
+ok(dshRootViewEnabled && dshRootViewEnabled.enabled === true, "dsh root view reports enabled");
+ok((await readManagerState()).state.sources.dsh === true, "sources.dsh restore works");
+
 // CC Switch 以固定 SSOT 保存技能，并把顶层技能目录链接到各 Agent 来源。
 const ccswitchSkill = await makeSkill(
   ccswitchRoot,
