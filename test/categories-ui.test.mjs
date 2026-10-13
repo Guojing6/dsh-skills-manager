@@ -157,6 +157,24 @@ try {
   assert.equal(nodes(addModalReopened).some(node => node.props.className === "dssm-batch-item selected"), false, "重新打开弹窗勾选已被重置");
   nodes(addModalReopened).find(node => node.children?.includes(t("btn.cancel")) && node.props?.onClick).props.onClick();
   render();
+  // 验证拖拽落点：模拟在分类上 drop 触发归类请求
+  const looseCat = nodes(dsh).find((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === t("category.uncategorized"));
+  looseCat.props.onDrop({
+    preventDefault() {},
+    currentTarget: { classList: { remove() {} } },
+    dataTransfer: {
+      getData(type) {
+        if (type === "text/plain") return JSON.stringify({ root: "dsh", name: "kept", currentCategoryId: "work" });
+        return "";
+      }
+    }
+  });
+  await tick(); await tick(); render();
+  const assignCalls = calls.filter((call) => call.url.endsWith("/category-assign"));
+  assert.ok(assignCalls.length > 0, "拖拽触发归类请求");
+  assert.equal(assignCalls.at(-1).body.name, "kept", "拖拽移动的是 kept 技能");
+  assert.equal(assignCalls.at(-1).body.category, "", "拖拽落点为未分类");
+
   assert.ok(nodes(work).some((node) => node.props.className === "dssm-skill-desc" && node.children[0] === "DESC_kept"), "第二行只有描述");
   assert.equal(nodes(work).some((node) => node.props.className === "dssm-row-source"), false, "技能行不再另起来源标签");
   const keptToggle = nodes(work).find((node) => node.props["aria-label"] === t("skill.toggle") + " kept");
@@ -175,7 +193,8 @@ try {
   assert.ok(picker, "项目页使用顶部工作区选择器");
   assert.ok(picker.props.options.some(option => option.label === "empty-notes"), "空工作区也列在浏览下拉中");
   assert.equal(nodes().some(node => node.props.className === "dssm-workspace"), false, "移除外层工作区折叠");
-  const projectSource = sources().find((node) => String(node.props.items?.[0]?.key).includes("project-dsh:a") || textOf(node).includes("alpha-one") || textOf(node).includes("项目 DSH"));
+  const projectSource = sources().find((node) => String(node.props.items?.[0]?.key) === "project-dsh:a");
+  assert.ok(projectSource, "找到项目来源卡片");
   assert.equal(projectSource.props.className, "dssm-source", "项目来源仍是来源卡片");
   assert.ok(nodes(projectSource).some((node) => node.props.className === "dssm-cat" && node.props["aria-label"] === "项目工作"), "项目来源内部再套分类");
   nodes(projectSource).find((node) => node.props["aria-label"] === t("category.toggle") + " 项目工作").props.onChange();

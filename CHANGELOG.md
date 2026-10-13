@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Disabled external sources no longer hide same-name bundled skills from enabled plugins. Native-source blocking and explicit per-skill disables remain effective, including mixed disabled-source groups (#33, #34).
+
 ## 1.1.17 - 2026-10-12
 
 - Support DSH `0.2.1-alpha.2` while retaining all existing supported versions.

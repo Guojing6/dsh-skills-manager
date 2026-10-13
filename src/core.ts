@@ -3013,7 +3013,7 @@ export async function skillDetail(key: string, name: string, options: ScopeOptio
   };
 }
 
-/** 选择未停用的最高优先级副本；全部停用时输出阻断候选覆盖原生扫描。 */
+/** 选择未停用的最高优先级副本；全部停用时保留原生覆盖或显式禁用阻断。 */
 export async function listProviderCandidates(options: ScopeOptions = {}) {
   const policyResult = await readManagerState();
   const candidates = [];
@@ -3033,6 +3033,11 @@ export async function listProviderCandidates(options: ScopeOptions = {}) {
   }
   for (const group of groupLoadableSkillsByName(items).values()) {
     const { root, entry, policy } = selectSkillWinner(group);
+    // 关闭的外部来源不覆盖其他插件；原生副本、分发链接及显式单技能禁用仍需阻断。
+    const hasNativeCopy = group.some(({ root, entry }) => root.native ||
+      entry.policyAliases?.some((alias) => user.some((item) => item.key === alias.rootKey && item.native)));
+    const hasExplicitDisable = group.some((item) => item.policy.override === false);
+    if (!hasNativeCopy && !hasExplicitDisable && !policy.sourceEnabled) continue;
     const project = root.scope === "project";
     const policyOnly = root.mutable;
     // 回退副本也必须覆盖组内更高优先级的原生条目，防止宿主重新选中已停用副本。

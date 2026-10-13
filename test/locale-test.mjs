@@ -469,6 +469,21 @@ eq(
   "main list hides absent read-only roots",
 );
 
+eq(
+  bundle.scopeSkillRoots([
+    { key: "dsh", scope: "user", mutable: true, exists: true, skills: [] },
+    { key: "agents", scope: "user", mutable: false, exists: true, skills: [] },
+    { key: "codex", scope: "user", mutable: false, exists: true, skills: [{ name: "foo" }] },
+    { key: "project-dsh", scope: "project", mutable: true, exists: true, skills: [] },
+  ])
+    .map(function (root) {
+      return root.key;
+    })
+    .join(","),
+  "dsh,codex",
+  "scopeSkillRoots retains mutable roots and non-empty read-only roots while excluding empty ones and project scope",
+);
+
 const parseApiResponse = bundle.parseApiResponse;
 ok(
   typeof parseApiResponse === "function",

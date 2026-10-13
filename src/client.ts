@@ -417,6 +417,7 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
       var us = react.useState<UploadSelection | null>(null), upload = us[0], setUpload = us[1];
       var ds = react.useState<Detail | null>(null), detail = ds[0], setDetail = ds[1];
       var inflightRef = react.useRef(false);
+      var draggingRef = react.useRef<{ root: string; name: string; currentCategoryId: string } | null>(null);
       var importInputRef = react.useRef<HTMLInputElement>(null);
       var folderInputRef = react.useRef<HTMLInputElement>(null);
       var pickerOpenRef = react.useRef(false);
@@ -555,11 +556,14 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
           draggable: canDrag,
           onDragStart: function (e: React.DragEvent) {
             if (!canDrag) return;
-            e.dataTransfer.setData("text/plain", JSON.stringify({ root: root.key, name: skill.name, currentCategoryId: skill.categoryId || "" }));
+            var dragInfo = { root: root.key, name: skill.name, currentCategoryId: skill.categoryId || "" };
+            draggingRef.current = dragInfo;
+            e.dataTransfer.setData("text/plain", JSON.stringify(dragInfo));
             e.dataTransfer.effectAllowed = "move";
             (e.currentTarget as HTMLElement).classList.add("dragging");
           },
           onDragEnd: function (e: React.DragEvent) {
+            draggingRef.current = null;
             (e.currentTarget as HTMLElement).classList.remove("dragging");
           }
         },
@@ -599,25 +603,30 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
           "aria-label": bucket.name,
           onDragOver: function (e: React.DragEvent) {
             e.preventDefault();
-            (e.currentTarget as HTMLElement).classList.add("drag-over");
+            if (draggingRef.current && draggingRef.current.root === root.key) {
+              (e.currentTarget as HTMLElement).classList.add("drag-over");
+            }
           },
           onDragLeave: function (e: React.DragEvent) {
+            var related = e.relatedTarget as Node | null;
+            if (related && (e.currentTarget as HTMLElement).contains(related)) return;
             (e.currentTarget as HTMLElement).classList.remove("drag-over");
           },
           onDrop: function (e: React.DragEvent) {
-              e.preventDefault();
-              (e.currentTarget as HTMLElement).classList.remove("drag-over");
-              try {
-                var dragData = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
-                if (dragData && dragData.name && dragData.root === root.key) {
-                  if (dragData.currentCategoryId !== bucket.id) {
-                    post("/category-assign", scoped({ root: root.key, name: dragData.name, category: bucket.id }), "category.assigned", { name: dragData.name, category: bucket.name });
-                  }
+            e.preventDefault();
+            draggingRef.current = null;
+            (e.currentTarget as HTMLElement).classList.remove("drag-over");
+            try {
+              var dragData = JSON.parse(e.dataTransfer.getData("text/plain") || "{}");
+              if (dragData && dragData.name && dragData.root === root.key) {
+                if (dragData.currentCategoryId !== bucket.id) {
+                  post("/category-assign", scoped({ root: root.key, name: dragData.name, category: bucket.id }), "category.assigned", { name: dragData.name, category: bucket.name });
                 }
-              } catch (_err) {
-                // 忽略非法的外部或非本插件拖拽载荷
               }
+            } catch (_err) {
+              // 忽略非法的外部或非本插件拖拽载荷
             }
+          }
         },
           h("div", { className: "dssm-cat-head" },
             h("button", { type: "button", className: "dssm-cat-main", "aria-expanded": open, onClick: function () { setExpanded(function (previous) { var next: Record<string, boolean> = {}; next[expansionKey] = !open; return Object.assign({}, previous, next); }); } },
@@ -770,18 +779,22 @@ import { antdLocaleFromDocument } from "./antd-locale.js";
             hostButton(t("category.addSkills") + (chosenCount ? " (" + chosenCount + ")" : ""), function () {
               var names = Object.keys(addSelection).filter(function (k) { return addSelection[k] && candidateNames.has(k); });
               if (!names.length) { setAddSelection({}); setAddSearch(""); setModal(null); return; }
+              if (inflightRef.current) return;
               var scoped = function (extra: Record<string, unknown>) { return addModal.workspace ? Object.assign({}, extra, { workspace: addModal.workspace }) : extra; };
+              inflightRef.current = true;
               setBusy(true); setAddSelection({}); setAddSearch(""); setModal(null);
               names.reduce<Promise<unknown>>(function (p, name) {
                 return p.then(function () { return sessionApi("/category-assign", { method: "POST", headers: MUTATION_HEADERS, body: JSON.stringify(scoped({ root: addModal.root, name: name, category: addModal.id })) }); });
               }, Promise.resolve()).then(function () {
-                var ws = addModal.workspace;
-                return Promise.all([refresh(true), ws ? loadWorkspaceDetail(ws) : null]);
-              }).then(function () {
                 setResult({ ok: true, text: t("category.batchAssigned", { count: names.length, category: addModal.name }) });
               }).catch(function (err: unknown) {
                 setResult({ ok: false, text: translateError(t, err) });
-              }).finally(function () { setBusy(false); });
+              }).finally(function () {
+                inflightRef.current = false;
+                setBusy(false);
+                var ws = addModal.workspace;
+                Promise.all([refresh(true), ws ? loadWorkspaceDetail(ws) : null]).catch(function () {});
+              });
             }, "primary", busy || !chosenCount)
           )
         ));
