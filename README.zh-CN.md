@@ -8,9 +8,9 @@
 
   **统一管理本机与项目技能，从 GitHub 安装、预览更新并备份回退**
 
-  [English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [Apache-2.0](LICENSE)
+  [English](README.md) · [更新日志](CHANGELOG.zh-CN.md) · [MIT](LICENSE)
 
-  [![许可证：Apache-2.0](https://img.shields.io/badge/许可证-Apache--2.0-blue.svg)](LICENSE)
+  [![许可证：MIT](https://img.shields.io/badge/许可证-MIT-green.svg)](LICENSE)
   [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-skills-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
   [![npm 下载量](https://img.shields.io/npm/dt/%40michengai%2Fdsh-skills-manager.svg?label=npm%20%E4%B8%8B%E8%BD%BD%E9%87%8F)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
   [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-skills-manager)
@@ -155,4 +155,4 @@ dsh plugin --profile web add @michengai/dsh-skills-manager@latest --registry=htt
 
 ## 许可证
 
-[Apache License 2.0](LICENSE)
+[MIT License](LICENSE)

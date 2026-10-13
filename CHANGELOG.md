@@ -4,6 +4,7 @@
 
 - The entry moved from **Settings → Skills** to a **Skills** panel in the sidebar, directly below **Plugins**. It registers into the host's own panel slots, so the row shares the shipped sidebar layout, order and collapse behaviour instead of the page living inside Settings.
 - Every tab and action is unchanged: Global, Project, Trash and Repositories, plus search, filters, categories, create, import, install, update, rollback and restore. The Settings section is no longer registered.
+- Repository license switched to MIT (previously Apache-2.0); the `package.json` and both README license notices were updated to match.
 
 ## 1.1.18 - 2026-10-13
 

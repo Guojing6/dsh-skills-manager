@@ -8,9 +8,9 @@
 
   **Manage local and project skills, install from GitHub, preview updates and restore backups**
 
-  [简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [Apache-2.0](LICENSE)
+  [简体中文](README.zh-CN.md) · [Changelog](CHANGELOG.md) · [MIT](LICENSE)
 
-  [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
   [![npm package](https://img.shields.io/npm/v/%40michengai%2Fdsh-skills-manager.svg?label=npm%20package)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
   [![npm downloads](https://img.shields.io/npm/dt/%40michengai%2Fdsh-skills-manager.svg?label=npm%20downloads)](https://www.npmjs.com/package/@michengai/dsh-skills-manager)
   [![DSH Web Plugin](https://img.shields.io/badge/DSH%20Web-Plugin-0f766e.svg)](https://github.com/MichengAI/dsh-skills-manager)
@@ -155,4 +155,4 @@ To test a source checkout, install dependencies using the pinned pnpm version, r
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[MIT License](LICENSE)
