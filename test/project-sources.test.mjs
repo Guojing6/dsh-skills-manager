@@ -247,6 +247,26 @@ try {
   assert.equal(typeof afterDisable.summary.disabled, "number");
   assert.equal(typeof afterDisable.summary.issues, "number");
   assert.equal(afterDisable.roots.some((r) => r.kind === "project-openclaw"), false, "通用根目录 skills 不再属于项目技能来源");
+  // 关闭的项目外部来源排名更高，也不能丢掉同名原生用户副本的禁用覆盖。
+  const mixed = join(temp, "mixed-disabled");
+  const mixedName = "mixed-disabled-native";
+  await skill(join(mixed, ".codex", "skills", mixedName), mixedName);
+  const mixedRoot = (await core.projectRoots([mixed])).find((r) => r.kind === "project-codex");
+  await core.setSourceEnabled(mixedRoot.key, false, undefined, { projectCwds: [mixed] });
+  const mixedCandidate = async () => (await core.listProviderCandidates({ cwd: mixed })).find((c) => c.name === mixedName);
+  assert.equal(await mixedCandidate(), undefined, "只有关闭的外部副本时不贡献遮蔽候选");
+  const nativeRoot = core.userRoots().find((r) => r.key === "agents");
+  await skill(join(nativeRoot.path, mixedName), mixedName);
+  await core.setSourceEnabled("agents", false);
+  const blocked = await mixedCandidate();
+  assert.ok(blocked, "同名原生来源关闭时必须保留禁用覆盖");
+  assert.equal(blocked.invocation.modelInvocable, false);
+  assert.equal(blocked.invocation.userInvocable, false);
+  await core.setSourceEnabled("agents", true);
+  const enabledNative = await mixedCandidate();
+  assert.equal(enabledNative.source, "agent-agents", "关闭的项目外部来源不阻止原生来源重新启用");
+  assert.equal(enabledNative.invocation.modelInvocable, true);
+  assert.equal(enabledNative.invocation.userInvocable, true);
   console.log("项目来源、Copilot 迁移与加载回归通过");
 } finally {
   await rm(temp, { recursive: true, force: true });
