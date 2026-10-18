@@ -2,7 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { antdLocaleFromDocument } from "./antd-locale.js";
 import { AntdProvider, Button, Modal, Progress } from "./antd-ui.js";
-import { createUpdateFlow, handlePluginUpdateEscape, manualPluginUpdateCommand, pluginUpdateCopy, type UpdatePayload } from "./plugin-update-model.js";
+import { createUpdateFlow, handlePluginUpdateEscape, pluginUpdateCopy, type UpdatePayload } from "./plugin-update-model.js";
 
 interface UpdateUIOptions { endpoint: string; packageName: string; titleRowSelector: string; linksSelector: string; zhName: string; enName: string; createIcon: (name: "refresh" | "download" | "copy" | "close") => HTMLElement }
 
@@ -10,7 +10,7 @@ const UPDATE_HEADER = "x-dsh-skills-manager-plugin-update";
 const STYLE_ID = "dsh-skills-manager-plugin-update-ui";
 const CSS = `
 .mpi-version{margin-left:8px;color:var(--dsw-alias-label-tertiary,#a0a0a0);font-family:inherit;font-size:12px;font-weight:500;line-height:18px;letter-spacing:0;white-space:nowrap;vertical-align:baseline}.mpi-check-host{display:inline-flex;align-items:center}.mpi-icon{display:inline-flex;flex:0 0 auto;width:16px;height:16px;align-items:center;justify-content:center;pointer-events:none}.mpi-icon svg{display:block;width:16px;height:16px}
-.mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:1px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--dsw-alias-border-l2,#494949);border-radius:7px;padding:10px;background:var(--dsw-alias-bg-layer-3,var(--dsw-specific-menu-item-hover,#353638))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
+.mpi-intro{margin:0 0 16px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:13px;line-height:20px}.mpi-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:8px 18px;margin:0 0 16px;font-size:12px;line-height:18px}.mpi-meta dt{color:var(--dsw-alias-label-secondary,#b9b9b9)}.mpi-meta dd{margin:0}.mpi-mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}.mpi-latest{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px}.mpi-release{color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px;text-decoration:underline;text-underline-offset:2px}.mpi-status{font-size:13px;font-weight:600;line-height:18px}.mpi-status[data-kind=error]{color:var(--dsw-alias-state-error-primary,#ef7272)}.mpi-status[data-kind=success]{color:var(--dsw-alias-state-success-primary,#51b976)}.mpi-status[data-kind=update]{color:#e8b15a !important}.mpi-manual{border-top:1px solid var(--dsw-alias-border-l2,#494949);padding-top:16px}.mpi-manual h3{margin:0 0 6px;font-size:14px;line-height:20px}.mpi-manual p{margin:0 0 10px;color:var(--dsw-alias-label-secondary,#b9b9b9);font-size:12px;line-height:18px}.mpi-command{display:flex;align-items:flex-start;gap:8px;border:1px solid var(--dsw-alias-border-l2,#494949);border-radius:7px;padding:10px;background:var(--dsw-alias-bg-layer-3,var(--dsw-specific-menu-item-hover,#353638))}.mpi-command code{min-width:0;flex:1;overflow:visible;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;line-height:18px;white-space:pre-wrap;overflow-wrap:anywhere}@media(max-width:560px){.mpi-meta{grid-template-columns:1fr;gap:2px}.mpi-meta dd{margin-bottom:6px}}
 `;
 function ensureStyle() {
   if (document.getElementById(STYLE_ID) !== null) return;
@@ -22,7 +22,7 @@ function ensureStyle() {
 function validPayload(value: unknown): value is UpdatePayload {
   if (value === null || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
-  return typeof item.packageName === "string" && typeof item.currentVersion === "string" && typeof item.updateAvailable === "boolean" && typeof item.profileName === "string" && typeof item.canAutoUpdate === "boolean" && typeof item.latestCheckFailed === "boolean" && (item.latestVersion === undefined || typeof item.latestVersion === "string");
+  return typeof item.packageName === "string" && typeof item.currentVersion === "string" && typeof item.updateAvailable === "boolean" && typeof item.profileName === "string" && typeof item.canAutoUpdate === "boolean" && typeof item.latestCheckFailed === "boolean" && (item.latestVersion === undefined || typeof item.latestVersion === "string") && (item.installKind === undefined || item.installKind === "link" || item.installKind === "package") && (item.repository === undefined || typeof item.repository === "string") && (item.releaseUrl === undefined || typeof item.releaseUrl === "string");
 }
 async function requestStatus(endpoint: string, method: "GET" | "POST", signal?: AbortSignal) {
   const signalOption = signal === undefined ? {} : { signal };
@@ -59,7 +59,7 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
   const lang = document.documentElement.lang;
   const view = props.flow.view(lang);
   const name = lang.toLowerCase().startsWith("zh") ? props.zhName : props.enName;
-  const command = manualPluginUpdateCommand(view.profileRaw, props.packageName, view.latestRaw);
+  const command = view.manualCommand;
   const copyLabel = copyState === "copied" ? view.copy.copied : copyState === "failed" ? view.copy.copyFailed : view.copy.copy;
   return React.createElement(AntdProvider, { locale: antdLocaleFromDocument() }, React.createElement(Modal, {
     open: true, className: "mpi-dialog", width: 680, zIndex: 1200, title: `${name} ${view.copy.update}`, keyboard: false, destroyOnHidden: true, onCancel: props.onClose,
@@ -72,13 +72,13 @@ function UpdateDialog(props: { flow: ReturnType<typeof createUpdateFlow>; packag
     React.createElement("p", { className: "mpi-intro" }, view.copy.intro),
     React.createElement("dl", { className: "mpi-meta" },
       React.createElement("dt", null, view.copy.current), React.createElement("dd", null, React.createElement("span", { className: "mpi-mono" }, view.currentVersion)),
-      React.createElement("dt", null, view.copy.latestLabel), React.createElement("dd", { className: "mpi-latest" }, React.createElement("span", { className: "mpi-mono" }, view.latestVersion), React.createElement("span", { className: "mpi-status", role: "status", "data-kind": view.kind, ...(view.kind === "update" ? { style: { color: "#e8b15a" } } : {}) }, view.message)),
+      React.createElement("dt", null, view.copy.latestLabel), React.createElement("dd", { className: "mpi-latest" }, React.createElement("span", { className: "mpi-mono" }, view.latestVersion), React.createElement("span", { className: "mpi-status", role: "status", "data-kind": view.kind, ...(view.kind === "update" ? { style: { color: "#e8b15a" } } : {}) }, view.message), view.releaseUrl === undefined ? null : React.createElement("a", { className: "mpi-release", href: view.releaseUrl, target: "_blank", rel: "noopener noreferrer" }, view.copy.releaseNotes)),
       React.createElement("dt", null, view.copy.profile), React.createElement("dd", null, React.createElement("span", { className: "mpi-mono" }, view.profileName))),
     view.busy ? React.createElement(Progress, { percent: 100, showInfo: false, status: "active" }) : null,
     React.createElement("section", { className: "mpi-manual" },
       React.createElement("h3", null, view.copy.manual),
-      React.createElement("p", null, view.copy.manualHint),
-      React.createElement("div", { className: "mpi-command" },
+      React.createElement("p", null, view.manualHint),
+      command === "" ? null : React.createElement("div", { className: "mpi-command" },
         React.createElement("code", null, command),
         React.createElement(Button, { disabled: view.busy, onClick: () => {
           const write = navigator.clipboard?.writeText(command);
@@ -172,4 +172,4 @@ function observePluginUpdate(options: UpdateUIOptions) {
   };
 }
 
-export { handlePluginUpdateEscape, manualPluginUpdateCommand, observePluginUpdate };
+export { handlePluginUpdateEscape, observePluginUpdate };

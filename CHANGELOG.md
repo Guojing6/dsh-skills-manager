@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 - 2026-10-18
+
+- The header **Check for updates** now compares the running version with this repository's newest GitHub Release instead of an npm package that is not published, so it no longer reports a failed check every time it opens.
+- A linked Git checkout is detected and cannot update itself: the dialog says so, offers `git pull` plus a restart, and links to the release notes. Package installs keep in-place updates and use the release tag (`<repository>#v<version>`) instead of an npm spec.
+- The update payload gained `installKind`, `repository` and `releaseUrl`, and both READMEs describe the new behaviour.
+
 ## 1.2.2 - 2026-10-18
 
 - Support DeepSeek Harness `0.2.1-rc.2` while keeping every previously supported version. A real `0.2.1-rc.2` host is now installed in an isolated sandbox, and the release passes load, state API, Agent skill scope, enable/disable policy refresh, project fallback and repository install checks.

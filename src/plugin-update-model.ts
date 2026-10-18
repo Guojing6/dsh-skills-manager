@@ -1,16 +1,16 @@
-export interface UpdatePayload { packageName: string; currentVersion: string; updateAvailable: boolean; profileName: string; canAutoUpdate: boolean; latestCheckFailed: boolean; latestVersion?: string; autoReload?: boolean; restartDesktop?: boolean }
+export interface UpdatePayload { packageName: string; currentVersion: string; updateAvailable: boolean; profileName: string; canAutoUpdate: boolean; latestCheckFailed: boolean; latestVersion?: string; installKind?: "link" | "package"; repository?: string; releaseUrl?: string; autoReload?: boolean; restartDesktop?: boolean }
 type UpdatePhase = "idle" | "checking" | "updating";
 type UpdateNotice = { type: "status" } | { type: "restart" } | { type: "restarting" } | { type: "error"; message: string };
 
 const ZH = {
   check: "检查更新", update: "更新", close: "关闭", recheck: "重新检查", auto: "自动更新", updating: "正在更新…", copy: "复制命令", copied: "已复制", copyFailed: "复制失败",
   checking: "正在检查更新…", latest: "已是最新版本", found: "发现新版本", failed: "检查更新失败，请稍后重试。", current: "运行版本", latestLabel: "最新版本", profile: "目标 profile", unknown: "未知",
-  manual: "手工更新", manualHint: "自动更新失败时，可在当前 DSH 终端执行以下命令，完成后重启 DSH Web。", manualHintDesktop: "自动更新失败时，请先完全退出 DSH Desktop，再用 Desktop 自带的 dsh 执行以下命令。普通 dsh 会拒绝 desktop profile。", intro: "仅检查并更新当前插件，不会联动安装其他插件。", restart: "更新完成，请重启 DSH Web。", restartDesktop: "更新完成，请完全退出并重新打开 DSH Desktop。", restarting: "更新完成，正在重启 DSH Desktop…", unavailable: "当前环境不支持自动更新，请使用手工更新命令。",
+  manual: "手工更新", manualHint: "自动更新不可用或失败时，在当前 DSH 终端执行以下命令，完成后重启 DSH。", manualHintDesktop: "自动更新不可用或失败时，请先完全退出 DSH Desktop，再用 Desktop 自带的 dsh 执行以下命令。普通 dsh 会拒绝 desktop profile。", manualHintLink: "这是 Git 目录安装：进入插件目录执行下面的命令拉取最新版本，然后重启 DSH。", releaseNotes: "查看 Release 说明", intro: "仅检查并更新当前插件，不会联动安装其他插件。", restart: "更新完成，请重启 DSH Web。", restartDesktop: "更新完成，请完全退出并重新打开 DSH Desktop。", restarting: "更新完成，正在重启 DSH Desktop…", unavailable: "当前安装方式不支持自动更新，请按下方说明手工更新。",
 };
 const EN = {
   check: "Check for updates", update: "Update", close: "Close", recheck: "Check again", auto: "Update automatically", updating: "Updating…", copy: "Copy command", copied: "Copied", copyFailed: "Copy failed",
   checking: "Checking for updates…", latest: "You are up to date", found: "New version available", failed: "Could not check for updates. Try again later.", current: "Running version", latestLabel: "Latest version", profile: "Target profile", unknown: "Unknown",
-  manual: "Manual update", manualHint: "If automatic update fails, run this command in the current DSH terminal, then restart DSH Web.", manualHintDesktop: "If automatic update fails, fully quit DSH Desktop, then run this command with Desktop's own dsh. A regular dsh rejects the desktop profile.", intro: "Only this plugin is checked and updated. Other plugins are not changed.", restart: "Update complete. Restart DSH Web.", restartDesktop: "Update complete. Fully quit and reopen DSH Desktop.", restarting: "Update complete. Restarting DSH Desktop…", unavailable: "Automatic update is unavailable. Use the manual command.",
+  manual: "Manual update", manualHint: "If automatic update is unavailable or fails, run this command in the current DSH terminal, then restart DSH.", manualHintDesktop: "If automatic update is unavailable or fails, fully quit DSH Desktop, then run this command with Desktop's own dsh. A regular dsh rejects the desktop profile.", manualHintLink: "This copy is a Git checkout: run the command below in the plugin directory, then restart DSH.", releaseNotes: "View release notes", intro: "Only this plugin is checked and updated. Other plugins are not changed.", restart: "Update complete. Restart DSH Web.", restartDesktop: "Update complete. Fully quit and reopen DSH Desktop.", restarting: "Update complete. Restarting DSH Desktop…", unavailable: "This install cannot update itself. Follow the manual steps below.",
 };
 type UpdateStrings = { [Key in keyof typeof ZH]: string };
 
@@ -22,7 +22,8 @@ export function pluginUpdateCopy(lang: string): UpdateStrings {
 export function describePluginUpdate(lang: string, payload: UpdatePayload | undefined, phase: UpdatePhase, notice: UpdateNotice) {
   const base = pluginUpdateCopy(lang);
   const desktop = payload?.restartDesktop === true || payload?.profileName === "desktop";
-  const copy = desktop ? { ...base, manualHint: base.manualHintDesktop } : base;
+  const linked = payload?.installKind === "link";
+  const copy = { ...base, manualHint: linked ? base.manualHintLink : desktop ? base.manualHintDesktop : base.manualHint };
   const busy = phase !== "idle";
   let message = copy.checking;
   let kind = "";
@@ -36,6 +37,11 @@ export function describePluginUpdate(lang: string, payload: UpdatePayload | unde
   else if (!payload.canAutoUpdate && payload.updateAvailable) { message = copy.unavailable; kind = "update"; }
   else if (payload.updateAvailable) { message = `${copy.found}: v${payload.latestVersion ?? copy.unknown}`; kind = "update"; }
   else { message = copy.latest; kind = "success"; }
+  const profileRaw = payload?.profileName ?? "";
+  const latestRaw = payload?.latestVersion ?? "latest";
+  const spec = payload?.repository !== undefined
+    ? `${payload.repository}#v${latestRaw}`
+    : `${payload?.packageName ?? ""}@${latestRaw} --registry=https://registry.npmjs.org/`;
   return {
     copy, busy, message, kind, loading: phase === "updating",
     updateLabel: phase === "updating" ? copy.updating : copy.auto,
@@ -43,8 +49,11 @@ export function describePluginUpdate(lang: string, payload: UpdatePayload | unde
     currentVersion: payload === undefined ? copy.unknown : `v${payload.currentVersion}`,
     latestVersion: payload?.latestVersion === undefined ? copy.unknown : `v${payload.latestVersion}`,
     profileName: payload?.profileName ?? copy.unknown,
-    profileRaw: payload?.profileName ?? "",
-    latestRaw: payload?.latestVersion ?? "latest",
+    profileRaw,
+    latestRaw,
+    manualHint: copy.manualHint,
+    manualCommand: payload === undefined ? "" : linked ? "git pull" : manualPluginUpdateCommand(profileRaw, spec),
+    releaseUrl: payload?.releaseUrl,
   };
 }
 
@@ -80,9 +89,9 @@ export function createUpdateFlow(request: (method: "GET" | "POST") => Promise<Up
   };
 }
 
-export function manualPluginUpdateCommand(profileName: string, packageName: string, version: string) {
+export function manualPluginUpdateCommand(profileName: string, spec: string) {
   const profile = profileName.trim() === "" ? "" : ` --profile ${profileName.trim()}`;
-  return `dsh plugin${profile} add ${packageName}@${version} --registry=https://registry.npmjs.org/`;
+  return `dsh plugin${profile} add ${spec}`;
 }
 
 interface PluginUpdateEscapeEvent { readonly key: string; preventDefault(): void; stopPropagation(): void; stopImmediatePropagation(): void }

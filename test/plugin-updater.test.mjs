@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { handlePluginUpdateEscape, manualPluginUpdateCommand } from '../src/plugin-update-model.ts'
-import { isDshCliEntry, isNewerVersion, isTrustedUpdateRequest, PLUGIN_UPDATE_HEADER, resolveUpdateRuntime, shouldNotifyParent } from '../src/plugin-updater.ts'
+import { isDshCliEntry, isNewerVersion, isTrustedUpdateRequest, PLUGIN_UPDATE_HEADER, registerPluginUpdater, repositorySlug, resolveUpdateRuntime, shouldNotifyParent } from '../src/plugin-updater.ts'
 
 test('技能管理器独立更新只接受同源专用请求', () => {
   assert.equal(isNewerVersion('0.1.40', '0.1.41'), true)
@@ -13,10 +13,51 @@ test('技能管理器独立更新只接受同源专用请求', () => {
   assert.equal(isTrustedUpdateRequest({ headers: { origin: 'http://localhost:3000', host: 'localhost:3000' } }), false)
   assert.equal(isTrustedUpdateRequest({ headers: { [PLUGIN_UPDATE_HEADER]: '1', host: '127.0.0.1:19387' }, socket: { remoteAddress: '::1' } }), true)
   assert.equal(isTrustedUpdateRequest({ headers: { [PLUGIN_UPDATE_HEADER]: '1', origin: 'http://localhost:3000', host: 'localhost:3000' }, socket: { remoteAddress: '192.168.1.8' } }), false)
-  assert.equal(manualPluginUpdateCommand('web', '@guojing6/dsh-skills-manager', '0.1.41'), 'dsh plugin --profile web add @guojing6/dsh-skills-manager@0.1.41 --registry=https://registry.npmjs.org/')
+  assert.equal(manualPluginUpdateCommand('web', 'https://github.com/Guojing6/dsh-skills-manager.git#v1.2.3'), 'dsh plugin --profile web add https://github.com/Guojing6/dsh-skills-manager.git#v1.2.3')
+  assert.deepEqual(repositorySlug('git+https://github.com/Guojing6/dsh-skills-manager.git'), { owner: 'Guojing6', repo: 'dsh-skills-manager' })
+  assert.deepEqual(repositorySlug('https://github.com/MichengAI/dsh-skills-manager'), { owner: 'MichengAI', repo: 'dsh-skills-manager' })
+  assert.deepEqual(repositorySlug('github:Guojing6/dsh-skills-manager#v1.2.3'), { owner: 'Guojing6', repo: 'dsh-skills-manager' })
+  assert.equal(repositorySlug('https://gitlab.com/owner/repo'), undefined)
+  assert.equal(repositorySlug(''), undefined)
   assert.equal(isDshCliEntry('C:/tools/dsh/lib/bin.js', { name: '@deepseek-ai/dsh', bin: { dsh: 'lib/bin.js' } }, 'C:/tools/dsh'), true)
   assert.equal(isDshCliEntry('C:/tools/dsh/lib/bin.js', { name: '@deepseek-ai/dsh', bin: { dsh: 'lib/other.js' } }, 'C:/tools/dsh'), false)
   assert.equal(isDshCliEntry('C:/tools/dsh/lib/bin.js', { name: 'other-cli', bin: { dsh: 'lib/bin.js' } }, 'C:/tools/dsh'), false)
+})
+
+test('更新状态对比 GitHub Release，而不是未发布的 npm 包', async () => {
+  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+  const requested = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => {
+    requested.push(String(url))
+    return new Response(JSON.stringify({ tag_name: 'v9.9.9', html_url: 'https://github.com/Guojing6/dsh-skills-manager/releases/tag/v9.9.9' }), { status: 200, headers: { 'content-type': 'application/json' } })
+  }
+  try {
+    let handler
+    registerPluginUpdater({
+      webServer: { register: (route) => { handler = route.handler; return () => {} } },
+      logger: { warn() {} },
+    }, {
+      endpoint: '/api/dsh-skills-manager/update',
+      packageName: '@guojing6/dsh-skills-manager',
+      manifestUrl: new URL('../package.json', import.meta.url),
+    })
+    const response = { writeHead() {}, end(body) { this.body = body } }
+    await handler({ method: 'GET', url: '/api/dsh-skills-manager/update', headers: {} }, response)
+    const payload = JSON.parse(response.body)
+    assert.equal(requested.length, 1)
+    assert.match(requested[0], /^https:\/\/api\.github\.com\/repos\/Guojing6\/dsh-skills-manager\/releases\/latest$/)
+    assert.equal(payload.currentVersion, manifest.version)
+    assert.equal(payload.latestVersion, '9.9.9')
+    assert.equal(payload.releaseUrl, 'https://github.com/Guojing6/dsh-skills-manager/releases/tag/v9.9.9')
+    assert.equal(payload.repository, 'https://github.com/Guojing6/dsh-skills-manager.git')
+    assert.equal(payload.updateAvailable, true)
+    assert.equal(payload.latestCheckFailed, false)
+    assert.equal(payload.installKind, 'package', '工作区目录不是符号链接，按包安装对待')
+    assert.equal(typeof payload.canAutoUpdate, 'boolean')
+  } finally {
+    globalThis.fetch = originalFetch
+  }
 })
 
 test('技能更新弹窗消费 ESC，避免继续关闭底层设置页', () => {

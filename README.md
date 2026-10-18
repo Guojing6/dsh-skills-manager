@@ -56,11 +56,11 @@ Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skill
 
 Then restart DSH, refresh the page, and open **Skills** in the sidebar — it sits directly below **Plugins**.
 
-- Plugin `1.2.2` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-rc.2`.
+- Plugin `1.2.3` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-rc.2`.
 
 ### Updating
 
-Pull the repository again and re-run the install command. The update entry in the panel header looks for a package of the same name on the npm registry; this distribution is Git-only and publishes nothing there, so that entry will not find a newer version.
+Pull the repository again and re-run the install command. The header **Check for updates** compares the running version with this repository's newest GitHub Release: a linked Git checkout is told to pull and restart, while a package install updates from the release tag.
 
 ## Using the panel
 
@@ -87,7 +87,7 @@ A few rules decide what the panel shows and what it is allowed to write:
 
 ## Repository installs: the limits
 
-- The header **Check for updates** updates the plugin itself. The repository **Refresh & check updates** only inspects skill contents: it never installs or replaces anything, and during a scan it shows the current repository and progress.
+- The header **Check for updates** updates the plugin itself against this repository's newest GitHub Release. The repository **Refresh & check updates** only inspects skill contents: it never installs or replaces anything, and during a scan it shows the current repository and progress.
 - Installations go to user-level DSH skills or Shared Agent (`~/.agents/skills`, overridable with `DSH_AGENTS_HOME`), or to `<project>/.dsh/skills` of a registered workspace. The chooser displays the resolved path and disables unsafe ones; a missing directory is created only after you confirm. Codex, Claude Code and other agent directories cannot be selected, and neither can arbitrary paths, unregistered project destinations or plugin-managed caches. Records from older versions that carry no destination fall back to DSH, and updates and rollbacks follow the recorded destination.
 - Only public GitHub repositories are supported. There are no private credentials and no automatic updates. Removing a subscription keeps the skills it installed.
 - Archives are capped at 32 MiB, which also applies when you filter by subdirectory. A failed scan keeps the previous catalog; a corrupt cache needs a refresh.

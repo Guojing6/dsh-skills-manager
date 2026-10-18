@@ -3,7 +3,7 @@ import type { HostContext, UpdateOptions, UpdateTarget } from "./host-types.js";
 import type { CodedError } from "./types.js";
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, lstat, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, delimiter, dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -184,36 +184,88 @@ function comparePrerelease(left: string[], right: string[]) {
   }
   return 0;
 }
-let latestCache: {packageName: string; expiresAt: number; version: string} | undefined;
-async function latestVersion(packageName: string) {
-  if (latestCache?.packageName === packageName && Date.now() < latestCache.expiresAt) return latestCache.version;
+let latestCache: {key: string; expiresAt: number; release: LatestRelease | null} | undefined;
+interface LatestRelease {
+  version: string;
+  url?: string;
+}
+const LATEST_CACHE_MS = 5 * 60e3;
+/**
+ * 本分发只通过 Git / 本地目录发布，没有 npm 包：最新版本看 GitHub Releases。
+ * 仓库地址取自插件清单，缺失或不是 GitHub 时只报告"检查失败"，不回退到猜测。
+ */
+function repositorySlug(value: unknown) {
+  if (typeof value !== "string" || value.trim() === "") return undefined;
+  const text = value.trim().replace(/^git\+/, "");
+  const match = /(?:^|[/@])github\.com[:/]([^/:#]+)\/([^/#]+?)(?:\.git)?(?:[#?].*)?$/.exec(text)
+    ?? /^github[:/]([^/:#]+)\/([^/#]+?)(?:\.git)?(?:[#?].*)?$/.exec(text);
+  if (match === null) return undefined;
+  return { owner: match[1], repo: match[2] };
+}
+function manifestRepository(value: unknown) {
+  if (typeof value === "string") return repositorySlug(value);
+  if (value !== null && typeof value === "object" && typeof (value as { url?: unknown }).url === "string") return repositorySlug((value as { url: string }).url);
+  return undefined;
+}
+interface PluginManifest {
+  version: string;
+  repository?: { owner: string; repo: string };
+}
+async function readManifest(manifestUrl: URL): Promise<PluginManifest> {
+  const value: {version?: unknown; repository?: unknown} = JSON.parse(await readFile(manifestUrl, "utf8"));
+  if (typeof value.version !== "string" || value.version === "") throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u5F53\u524D\u63D2\u4EF6\u7248\u672C\u3002");
+  const repository = manifestRepository(value.repository);
+  return { version: value.version, ...repository === undefined ? {} : { repository } };
+}
+async function latestRelease(repository: { owner: string; repo: string }): Promise<LatestRelease | undefined> {
+  const key = `${repository.owner}/${repository.repo}`;
+  if (latestCache?.key === key && Date.now() < latestCache.expiresAt) return latestCache.release ?? void 0;
+  let release: LatestRelease | undefined;
   try {
-    const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(packageName)}/latest`, { signal: AbortSignal.timeout(8e3) });
-    if (!response.ok) return void 0;
-    const value: {version?: unknown} = await response.json();
-    if (typeof value.version !== "string" || value.version === "") return void 0;
-    latestCache = { packageName, version: value.version, expiresAt: Date.now() + 5 * 6e4 };
-    return value.version;
+    const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.repo)}/releases/latest`, {
+      headers: { accept: "application/vnd.github+json", "user-agent": "dsh-skills-manager" },
+      signal: AbortSignal.timeout(8e3),
+    });
+    if (response.ok) {
+      const value: {tag_name?: unknown; html_url?: unknown; draft?: unknown} = await response.json();
+      const tag = typeof value.tag_name === "string" ? value.tag_name : "";
+      const version = tag.replace(/^v/, "");
+      if (version !== "" && value.draft !== true) release = { version, ...typeof value.html_url === "string" ? { url: value.html_url } : {} };
+    }
   } catch {
-    return void 0;
+    /* 网络或限流失败只表示本次检查失败，不阻止面板其他功能 */
+  }
+  latestCache = { key, expiresAt: Date.now() + LATEST_CACHE_MS, release: release ?? null };
+  return release;
+}
+type InstallKind = "link" | "package";
+/** 目录安装（pnpm link / 本地路径）与包安装分开：链接安装只能由用户 git pull 后重启。 */
+async function installKind(manifestUrl: URL): Promise<InstallKind> {
+  const directory = dirname(fileURLToPath(manifestUrl));
+  try {
+    if ((await lstat(directory)).isSymbolicLink()) return "link";
+    return (await realpath(directory)) === resolve(directory) ? "package" : "link";
+  } catch {
+    return "package";
   }
 }
-async function currentVersion(manifestUrl: URL) {
-  const value: {version?: unknown} = JSON.parse(await readFile(manifestUrl, "utf8"));
-  if (typeof value.version !== "string" || value.version === "") throw new Error("\u65E0\u6CD5\u8BFB\u53D6\u5F53\u524D\u63D2\u4EF6\u7248\u672C\u3002");
-  return value.version;
+function repositorySpec(repository: { owner: string; repo: string } | undefined, version: string) {
+  return repository === undefined ? void 0 : `https://github.com/${repository.owner}/${repository.repo}.git#v${version}`;
 }
 async function status(options: UpdateOptions, target: UpdateTarget) {
-  const current = await currentVersion(options.manifestUrl);
-  const latest = await latestVersion(options.packageName);
+  const manifest = await readManifest(options.manifestUrl);
+  const release = manifest.repository === undefined ? void 0 : await latestRelease(manifest.repository);
+  const kind = await installKind(options.manifestUrl);
   return {
     packageName: options.packageName,
-    currentVersion: current,
-    ...latest === void 0 ? {} : { latestVersion: latest },
-    latestCheckFailed: latest === void 0,
-    updateAvailable: latest !== void 0 && isNewerVersion(current, latest),
+    currentVersion: manifest.version,
+    ...release === undefined ? {} : { latestVersion: release.version, ...release.url === undefined ? {} : { releaseUrl: release.url } },
+    ...manifest.repository === undefined ? {} : { repository: `https://github.com/${manifest.repository.owner}/${manifest.repository.repo}.git` },
+    installKind: kind,
+    latestCheckFailed: release === undefined,
+    updateAvailable: release !== undefined && isNewerVersion(manifest.version, release.version),
     profileName: target.profileName,
-    canAutoUpdate: target.canAutoUpdate
+    canAutoUpdate: target.canAutoUpdate && kind !== "link"
   };
 }
 async function runCliInstall(target: UpdateTarget, packageSpec: string) {
@@ -321,9 +373,19 @@ function registerPluginUpdater(ctx: HostContext, options: UpdateOptions) {
           json(response, 200, before);
           return;
         }
+        if (!before.canAutoUpdate) {
+          json(response, 409, { error: "\u5F53\u524D\u662F Git \u76EE\u5F55\u5B89\u88C5\uFF0C\u65E0\u6CD5\u81EA\u52A8\u66F4\u65B0\uFF1A\u8BF7\u5728\u63D2\u4EF6\u76EE\u5F55\u6267\u884C git pull\uFF0C\u7136\u540E\u91CD\u542F DSH\u3002" });
+          return;
+        }
+        const repository = (await readManifest(options.manifestUrl)).repository;
+        const spec = repositorySpec(repository, before.latestVersion);
+        if (spec === undefined) {
+          json(response, 503, { error: "\u63D2\u4EF6\u6E05\u5355\u7F3A\u5C11 GitHub \u4ED3\u5E93\u5730\u5740\uFF0C\u65E0\u6CD5\u81EA\u52A8\u66F4\u65B0\u3002" });
+          return;
+        }
         installing = true;
         try {
-          await install(target, `${options.packageName}@${before.latestVersion}`);
+          await install(target, spec);
         } finally {
           installing = false;
         }
@@ -346,5 +408,6 @@ export {
   isDshCliEntry,
   isNewerVersion,
   isTrustedUpdateRequest,
-  registerPluginUpdater
+  registerPluginUpdater,
+  repositorySlug
 };
