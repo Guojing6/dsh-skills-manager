@@ -239,15 +239,25 @@ async function latestRelease(repository: { owner: string; repo: string }): Promi
   return release;
 }
 type InstallKind = "link" | "package";
-/** 目录安装（pnpm link / 本地路径）与包安装分开：链接安装只能由用户 git pull 后重启。 */
-async function installKind(manifestUrl: URL): Promise<InstallKind> {
+/**
+ * 目录安装（pnpm link / 本地路径）与包安装分开：链接安装只能由用户 git pull 后重启。
+ * Node 解析 ESM 时会跟随符号链接，import.meta.url 已经是真实路径，所以不能只看 lstat：
+ * 真实路径落在任何 node_modules 之外，就说明跑的是本地检出/链接目录。
+ */
+export async function pluginInstallKind(manifestUrl: URL): Promise<InstallKind> {
   const directory = dirname(fileURLToPath(manifestUrl));
   try {
     if ((await lstat(directory)).isSymbolicLink()) return "link";
-    return (await realpath(directory)) === resolve(directory) ? "package" : "link";
   } catch {
-    return "package";
+    /* 目录暂时不可读时继续按真实路径判断 */
   }
+  let real = directory;
+  try {
+    real = await realpath(directory);
+  } catch {
+    /* 保底用原始路径 */
+  }
+  return real.replace(/\\/g, "/").toLowerCase().split("/").includes("node_modules") ? "package" : "link";
 }
 function repositorySpec(repository: { owner: string; repo: string } | undefined, version: string) {
   return repository === undefined ? void 0 : `https://github.com/${repository.owner}/${repository.repo}.git#v${version}`;
@@ -255,7 +265,7 @@ function repositorySpec(repository: { owner: string; repo: string } | undefined,
 async function status(options: UpdateOptions, target: UpdateTarget) {
   const manifest = await readManifest(options.manifestUrl);
   const release = manifest.repository === undefined ? void 0 : await latestRelease(manifest.repository);
-  const kind = await installKind(options.manifestUrl);
+  const kind = await pluginInstallKind(options.manifestUrl);
   return {
     packageName: options.packageName,
     currentVersion: manifest.version,

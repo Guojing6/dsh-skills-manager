@@ -56,7 +56,7 @@ Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skill
 
 Then restart DSH, refresh the page, and open **Skills** in the sidebar — it sits directly below **Plugins**.
 
-- Plugin `1.2.3` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-rc.2`.
+- Plugin `1.2.4` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-rc.2`.
 
 ### Updating
 

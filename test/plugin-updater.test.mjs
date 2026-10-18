@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import test from 'node:test'
 import { handlePluginUpdateEscape, manualPluginUpdateCommand } from '../src/plugin-update-model.ts'
-import { isDshCliEntry, isNewerVersion, isTrustedUpdateRequest, PLUGIN_UPDATE_HEADER, registerPluginUpdater, repositorySlug, resolveUpdateRuntime, shouldNotifyParent } from '../src/plugin-updater.ts'
+import { isDshCliEntry, isNewerVersion, isTrustedUpdateRequest, PLUGIN_UPDATE_HEADER, pluginInstallKind, registerPluginUpdater, repositorySlug, resolveUpdateRuntime, shouldNotifyParent } from '../src/plugin-updater.ts'
 
 test('技能管理器独立更新只接受同源专用请求', () => {
   assert.equal(isNewerVersion('0.1.40', '0.1.41'), true)
@@ -53,10 +56,26 @@ test('更新状态对比 GitHub Release，而不是未发布的 npm 包', async 
     assert.equal(payload.repository, 'https://github.com/Guojing6/dsh-skills-manager.git')
     assert.equal(payload.updateAvailable, true)
     assert.equal(payload.latestCheckFailed, false)
-    assert.equal(payload.installKind, 'package', '工作区目录不是符号链接，按包安装对待')
-    assert.equal(typeof payload.canAutoUpdate, 'boolean')
+    assert.equal(payload.installKind, 'link', '工作区在 node_modules 之外，按链接安装对待')
+    assert.equal(payload.canAutoUpdate, false, '链接安装不允许自动更新')
   } finally {
     globalThis.fetch = originalFetch
+  }
+})
+
+test('按 node_modules 归属区分链接安装与包安装', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'plugin-kind-'))
+  try {
+    const linked = join(root, 'checkout')
+    const packaged = join(root, 'node_modules', '@guojing6', 'dsh-skills-manager')
+    await mkdir(linked, { recursive: true })
+    await mkdir(packaged, { recursive: true })
+    await writeFile(join(linked, 'package.json'), '{}')
+    await writeFile(join(packaged, 'package.json'), '{}')
+    assert.equal(await pluginInstallKind(pathToFileURL(join(linked, 'package.json'))), 'link', '本地检出不带 node_modules 段')
+    assert.equal(await pluginInstallKind(pathToFileURL(join(packaged, 'package.json'))), 'package', '包安装的真实路径在 node_modules 内')
+  } finally {
+    await rm(root, { recursive: true, force: true })
   }
 })
 

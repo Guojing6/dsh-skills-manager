@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.4 - 2026-10-18
+
+- Fix link-install detection in the update check. Node resolves symlinks for ES modules, so `import.meta.url` already pointed at the real checkout and a linked install was reported as a package install. The kind is now decided by whether the real path lives inside any `node_modules`.
+- A linked Git checkout therefore really does refuse in-place updates and shows the `git pull` guidance; only package installs offer the release-tag update.
+
 ## 1.2.3 - 2026-10-18
 
 - The header **Check for updates** now compares the running version with this repository's newest GitHub Release instead of an npm package that is not published, so it no longer reports a failed check every time it opens.
