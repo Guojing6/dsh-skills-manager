@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 - 2026-10-18
+
+- Support DeepSeek Harness `0.2.1-rc.2` while keeping every previously supported version. A real `0.2.1-rc.2` host is now installed in an isolated sandbox, and the release passes load, state API, Agent skill scope, enable/disable policy refresh, project fallback and repository install checks.
+- The `0.2.1-rc.2` compatibility sandbox pins Cordis `4.0.5` and the matching official Cordis plugins, so the host runs with the versions it declares instead of falling back to Cordis `4.0.2`.
+- Peer metadata, the tested-host list in both READMEs and the compatibility assertions are resynced from `scripts/hosts.mjs`.
+
 ## 1.2.1 - 2026-10-13
 
 - The repository is now standalone: the package name, bundle patch and client bundle identifier are `@guojing6/dsh-skills-manager`, and the repository, issue and in-app project links point here.

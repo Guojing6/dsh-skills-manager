@@ -1,11 +1,12 @@
-// 0.1.7-rc.1、0.1.7-rc.2、0.2.0-rc.1 与 0.2.0-rc.2 都依赖 Cordis ~4.0.4；更早的已验证 rc 宿主继续锁定 4.0.2。
-// 官方 Cordis 插件的最新版只接受 ~4.0.4。旧宿主若让它们浮动，HMR 服务不会注册，补丁监听会直接退出。
+// 0.1.7-rc.1、0.1.7-rc.2、0.2.0-rc.1 与 0.2.0-rc.2 都依赖 Cordis ~4.0.4；0.2.1-rc.2 依赖 Cordis ~4.0.5；更早的已验证 rc 宿主继续锁定 4.0.2。
+// 官方 Cordis 插件的最新版只接受对应 Cordis 小版本。旧宿主若让它们浮动，HMR 服务不会注册，补丁监听会直接退出。
 const CORDIS_PINS = Object.freeze({
   "0.1.7-rc.1": "4.0.4",
   "0.1.7-rc.2": "4.0.4",
   "0.2.0-rc.1": "4.0.4",
   "0.2.0-rc.2": "4.0.4",
   "0.2.1-alpha.2": "4.0.5-alpha.1",
+  "0.2.1-rc.2": "4.0.5",
 });
 const CORDIS_PLUGIN_PINS = Object.freeze({
   "4.0.2": {
@@ -28,6 +29,13 @@ const CORDIS_PLUGIN_PINS = Object.freeze({
     "@deepseek-ai/cordis-plugin-include": "1.0.10-alpha.1",
     "@deepseek-ai/cordis-plugin-loader": "1.0.6-alpha.1",
     "@deepseek-ai/cordis-plugin-timer": "1.1.7-alpha.1",
+  },
+  "4.0.5": {
+    "@deepseek-ai/cordis-plugin-group": "1.0.5",
+    "@deepseek-ai/cordis-plugin-hmr": "1.0.20",
+    "@deepseek-ai/cordis-plugin-include": "1.0.10",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.6",
+    "@deepseek-ai/cordis-plugin-timer": "1.1.7",
   },
 });
 

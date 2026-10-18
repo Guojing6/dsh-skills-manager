@@ -4,7 +4,7 @@ DSH Skills Manager 把本机上散落在各个 Agent 目录里的技能收进 De
 
 这是社区维护的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件，并非 DeepSeek AI 官方产品。
 
-- 版本：`1.2.1`
+- 版本：`1.2.2`
 - 仓库：<https://github.com/Guojing6/dsh-skills-manager>
 - 问题反馈：<https://github.com/Guojing6/dsh-skills-manager/issues>
 - 更新日志：[中文](CHANGELOG.zh-CN.md) · [English](CHANGELOG.md)
@@ -43,7 +43,7 @@ dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.
 
 ```powershell
 dsh plugin --profile web add E:\path\to\dsh-skills-manager
-dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
+dsh plugin --profile web add .\dsh-skills-manager-1.2.2.tgz
 ```
 
 ### 交给 Agent 安装
@@ -56,7 +56,7 @@ dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
 
 安装完成后重启 DSH、刷新页面，在侧栏点击「技能」即可——它就在「插件」正下方。
 
-- `1.2.1` 已验证兼容 DeepSeek Harness `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`。
+- `1.2.2` 已验证兼容 DeepSeek Harness `0.1.2-rc.1`、`0.1.5-rc.1`、`0.1.5-rc.2`、`0.1.5-rc.3`、`0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.2`、`0.2.1-rc.2`。
 
 ### 更新
 

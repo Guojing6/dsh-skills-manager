@@ -4,7 +4,7 @@ DSH Skills Manager collects every Agent Skill on your machine into one panel ins
 
 This is a community-maintained plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), not an official DeepSeek AI product.
 
-- Version: `1.2.1`
+- Version: `1.2.2`
 - Repository: <https://github.com/Guojing6/dsh-skills-manager>
 - Issues: <https://github.com/Guojing6/dsh-skills-manager/issues>
 - Changelog: [English](CHANGELOG.md) · [中文](CHANGELOG.zh-CN.md)
@@ -43,7 +43,7 @@ dsh plugin --profile web add git+https://github.com/Guojing6/dsh-skills-manager.
 
 ```powershell
 dsh plugin --profile web add E:\path\to\dsh-skills-manager
-dsh plugin --profile web add .\dsh-skills-manager-1.2.1.tgz
+dsh plugin --profile web add .\dsh-skills-manager-1.2.2.tgz
 ```
 
 ### By asking an agent
@@ -56,7 +56,7 @@ Install the DSH Skills Manager plugin from https://github.com/Guojing6/dsh-skill
 
 Then restart DSH, refresh the page, and open **Skills** in the sidebar — it sits directly below **Plugins**.
 
-- Plugin `1.2.1` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`.
+- Plugin `1.2.2` is tested with DeepSeek Harness `0.1.2-rc.1`, `0.1.5-rc.1`, `0.1.5-rc.2`, `0.1.5-rc.3`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.2`, `0.2.1-rc.2`.
 
 ### Updating
 
